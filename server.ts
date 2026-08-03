@@ -25,20 +25,110 @@ app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', time: new Date().toISOString() });
 });
 
+// Dynamic Task Generator Function for Fallback
+function generateDynamicTask(topic?: string, difficulty?: string) {
+  const chosenTopic = topic || 'Sisi Datar';
+  const chosenDiff = difficulty || 'Sedang';
+
+  const names = ['Ahmad', 'Siti', 'Budi', 'Dewi', 'Rizky', 'Rina', 'Fajar', 'Nabila'];
+  const name = names[Math.floor(Math.random() * names.length)];
+
+  if (chosenTopic === 'Sisi Lengkung') {
+    const rChoices = [7, 14, 21];
+    const r = rChoices[Math.floor(Math.random() * rChoices.length)];
+    const t = (Math.floor(Math.random() * 3) + 1) * 10; // 10, 20, 30 cm
+    const volTabung = Math.round((22 / 7) * r * r * t);
+    const luastabung = Math.round(2 * (22 / 7) * r * (r + t));
+
+    const templates = [
+      {
+        title: `Tugas Kontekstual: Tangki Air Minum (${chosenDiff})`,
+        problem: `${name} memiliki wadah penampungan air berbentuk tabung dengan jari-jari alas ${r} cm dan tinggi ${t} cm. Wadah tersebut akan diisi penuh air untuk kebutuhan acara bakti sosial sekolah. Hitunglah berapa liter volume air maksimum yang dapat ditampung wadah tersebut! (Catatan: 1 liter = 1.000 cm³, $\\pi = 22/7$).`,
+        hint: `Gunakan rumus Volume Tabung: $V = \\pi \\times r^2 \\times t$. Setelah mendapatkan volume dalam cm³, bagilah dengan 1.000 untuk mengubahnya ke liter.`,
+        solution: `1. Diketahui:\n   - Jari-jari (r) = ${r} cm\n   - Tinggi (t) = ${t} cm\n   - $\\pi = 22/7$\n2. Rumus Volume Tabung = $\\pi \\times r^2 \\times t$\n3. Perhitungan:\n   V = (22/7) × ${r}² × ${t}\n   V = (22/7) × ${r * r} × ${t}\n   V = 22 × ${(r * r) / 7} × ${t} = ${volTabung} cm³.\n4. Konversi ke liter:\n   ${volTabung} ÷ 1.000 = ${(volTabung / 1000).toFixed(2)} liter.`,
+        answer: `Volume air maksimum adalah ${(volTabung / 1000).toFixed(2)} liter (${volTabung.toLocaleString('id-ID')} cm³).`
+      },
+      {
+        title: `Tugas Kontekstual: Kaleng Biskuit Lebaran (${chosenDiff})`,
+        problem: `Ibu membeli kaleng biskuit berbentuk tabung tanpa tutup dengan jari-jari ${r} cm dan tinggi ${t} cm. Ibu ingin melapisi seluruh permukaan luar kaleng tersebut (termasuk alasnya) dengan kertas kado berwarna emas. Berapa luas kertas kado minimal yang dibutuhkan? (Gunakan $\\pi = 22/7$).`,
+        hint: `Karena kaleng tanpa tutup, luas permukaannya adalah Luas Alas (lingkaran) + Luas Selimut Tabung ($L = \\pi r^2 + 2\\pi r t = \\pi r (r + 2t)$).`,
+        solution: `1. Diketahui:\n   - Jari-jari (r) = ${r} cm\n   - Tinggi (t) = ${t} cm\n2. Rumus Luas Tanpa Tutup = $\\pi \\times r \\times (r + 2t)$\n3. Perhitungan:\n   L = (22/7) × ${r} × (${r} + 2 × ${t})\n   L = 22 × (${r + 2 * t}) = ${22 * (r + 2 * t)} cm².`,
+        answer: `Luas kertas kado minimal yang dibutuhkan adalah ${22 * (r + 2 * t)} cm².`
+      }
+    ];
+    return templates[Math.floor(Math.random() * templates.length)];
+  }
+
+  if (chosenTopic === 'Kontekstual') {
+    const r = 7;
+    const tKerucut = 24;
+    const sKerucut = 25; // 7, 24, 25 triple pythagoras
+    const volKerucut = Math.round((1 / 3) * (22 / 7) * r * r * tKerucut); // 1232
+    const volSetengahBola = Math.round((2 / 3) * (22 / 7) * r * r * r); // 718.67 -> 719
+
+    const templates = [
+      {
+        title: `Tugas HOTS Kontekstual: Es Krim Cone Komplit (${chosenDiff})`,
+        problem: `Sebuah kedai es krim menjual es krim dalam wadah cone berbentuk kerucut dengan jari-jari ${r} cm dan tinggi ${tKerucut} cm. Di atas cone diletakkan 1 scoop es krim berbentuk setengah bola dengan jari-jari yang sama (${r} cm). Hitunglah total volume es krim keseluruhan jika cone diisi penuh sampai bagian setengah bola di atasnya! (Gunakan $\\pi = 22/7$).`,
+        hint: `Hitung secara terpisah: 1) Volume Kerucut ($V_1 = \\frac{1}{3} \\pi r^2 t$), 2) Volume Setengah Bola ($V_2 = \\frac{2}{3} \\pi r^3$), lalu jumlahkan $V_{\\text{total}} = V_1 + V_2$.`,
+        solution: `1. Volume Cone (Kerucut):\n   V₁ = (1/3) × (22/7) × 7² × 24 = (1/3) × 22 × 7 × 24 = 1.232 cm³.\n2. Volume Scoop (Setengah Bola):\n   V₂ = (2/3) × (22/7) × 7³ = (2/3) × 22 × 49 = 718,67 cm³.\n3. Total Volume Es Krim:\n   V_total = 1.232 + 718,67 = 1.950,67 cm³.`,
+        answer: `Total volume es krim keseluruhan adalah 1.950,67 cm³.`
+      },
+      {
+        title: `Tugas HOTS Kontekstual: Kubah Monumen Kombinasi (${chosenDiff})`,
+        problem: `Sebuah monumen desa memiliki bagian bawah berbentuk tabung (diameter 14 m, tinggi 10 m) dan bagian atap berbentuk setengah bola dengan diameter yang sama. Jika seluruh bagian luar monumen hendak dicat ulang dengan biaya Rp25.000 per m², hitung total biaya pengecatan bagian luar monumen tersebut! (Tanpa lantai bawah, $\\pi = 22/7$).`,
+        hint: `Luas permukaan luar = Luas Selimut Tabung ($2\\pi r t$) + Luas Setengah Bola ($2\\pi r^2$). Setelah itu kalikan total luas dengan Rp25.000.`,
+        solution: `1. Diketahui: r = 14 / 2 = 7 m, t = 10 m.\n2. Luas Selimut Tabung = 2 × (22/7) × 7 × 10 = 440 m².\n3. Luas Setengah Bola = 2 × (22/7) × 7² = 308 m².\n4. Total Luas Luar = 440 + 308 = 748 m².\n5. Total Biaya = 748 × Rp25.000 = Rp18.700.000.`,
+        answer: `Total biaya pengecatan monumen adalah Rp18.700.000.`
+      }
+    ];
+    return templates[Math.floor(Math.random() * templates.length)];
+  }
+
+  // Default: Sisi Datar
+  const s = (Math.floor(Math.random() * 3) + 2) * 5; // 10, 15, 20 cm
+  const p = 20, l = 15, t = 10;
+  const lKubus = 6 * s * s;
+  const lBalok = 2 * (p * l + p * t + l * t);
+
+  const templates = [
+    {
+      title: `Tugas Kontekstual: Pembungkus Kado Unik (${chosenDiff})`,
+      problem: `${name} hendak membungkus dua buah hadiah ulang tahun untuk adiknya. Kado pertama berbentuk kubus dengan rusuk ${s} cm, dan kado kedua berbentuk balok berukuran ${p} cm × ${l} cm × ${t} cm. Berapa luas kertas kado minimal yang dibutuhkan ${name} untuk membungkus kedua kado tersebut secara rapi?`,
+      hint: `Hitung Luas Permukaan Kubus ($6s^2$) dan Luas Permukaan Balok ($2(pl + pt + lt)$), lalu jumlahkan keduanya.`,
+      solution: `1. Kado Kubus:\n   L₁ = 6 × ${s}² = 6 × ${s * s} = ${lKubus} cm².\n2. Kado Balok:\n   L₂ = 2 × (${p}×${l} + ${p}×${t} + ${l}×${t}) = 2 × (${p*l} + ${p*t} + ${l*t}) = 2 × ${p*l + p*t + l*t} = ${lBalok} cm².\n3. Total Kertas Kado Minimal:\n   L_total = ${lKubus} + ${lBalok} = ${lKubus + lBalok} cm².`,
+      answer: `Luas kertas kado minimal yang dibutuhkan adalah ${lKubus + lBalok} cm².`
+    },
+    {
+      title: `Tugas Kontekstual: Pembuatan Tenda Pramuka (${chosenDiff})`,
+      problem: `Regu Pramuka SMP membuat tenda dari kain terpal berbentuk prisma segitiga. Alas segitiga bernilai 120 cm, tinggi segitiga alas 90 cm, dan panjang/tinggi prisma tenda 200 cm. Hitunglah volume udara yang ada di dalam tenda tersebut!`,
+      hint: `Gunakan rumus Volume Prisma: $V = \\text{Luas Alas} \\times \\text{Tinggi Prisma} = (\\frac{1}{2} \\times a \\times t_{\\text{alas}}) \\times t_{\\text{prisma}}$.`,
+      solution: `1. Diketahui:\n   - Alas segitiga (a) = 120 cm\n   - Tinggi segitiga (t_alas) = 90 cm\n   - Tinggi prisma (t_prisma) = 200 cm\n2. Luas Alas Segitiga = 1/2 × 120 × 90 = 5.400 cm².\n3. Volume Prisma = 5.400 × 200 = 1.080.000 cm³ = 1,08 m³.`,
+      answer: `Volume udara di dalam tenda adalah 1.080.000 cm³ (atau 1,08 m³).`
+    }
+  ];
+
+  return templates[Math.floor(Math.random() * templates.length)];
+}
+
 // AI Task & Problem Generation Route
 app.post('/api/generate-task', async (req, res) => {
-  const { topic, difficulty, promptText } = req.body;
+  const { topic, difficulty } = req.body;
 
   const ai = getGeminiClient();
 
   if (ai) {
     try {
-      const prompt = `Anda adalah Suwarto, S.Pd., guru Matematika Kelas 9 SMP. Buatkan 1 soal cerita matematika konteks kehidupan nyata tentang BAB 2 BANGUN RUANG (Topik: ${topic || 'Umum'}, Tingkat Kesulitan: ${difficulty || 'Sedang'}). 
-Sertakan:
-1. Soal Cerita Kontekstual yang menarik
-2. Petunjuk (Hint) awal untuk membantu siswa
-3. Langkah-langkah penyelesaian lengkap beserta rumus dan jawaban akhir
-Format jawaban dalam JSON rapi:
+      const prompt = `Anda adalah Suwarto, S.Pd., guru Matematika Kelas 9 SMP.
+Buatkan 1 soal cerita matematika kontekstual kehidupan nyata tentang BAB 2 BANGUN RUANG.
+Kriteria:
+- Topik: ${topic || 'Sisi Datar'}
+- Tingkat Kesulitan: ${difficulty || 'Sedang'}
+- Berikan narasi cerita menarik anak SMP di Indonesia.
+- Sertakan petunjuk (hint) awal.
+- Sertakan langkah-langkah penyelesaian rinci beserta rumus dan jawaban akhir yang akurat.
+
+Format Wajib JSON murni (tanpa markdown tambahan):
 {
   "title": "Judul Soal",
   "problem": "Teks soal cerita...",
@@ -47,62 +137,31 @@ Format jawaban dalam JSON rapi:
   "answer": "Jawaban akhir..."
 }`;
 
+      // Try gemini-2.5-flash
       const response = await ai.models.generateContent({
         model: 'gemini-2.5-flash',
         contents: prompt,
       });
 
       const responseText = response.text || '';
-      // Try parsing JSON from AI output
-      const jsonMatch = responseText.match(/\{[\s\S]*\}/);
+      const cleanText = responseText.replace(/```json/gi, '').replace(/```/g, '').trim();
+      const jsonMatch = cleanText.match(/\{[\s\S]*\}/);
+
       if (jsonMatch) {
         const parsed = JSON.parse(jsonMatch[0]);
-        return res.json({ success: true, data: parsed });
-      } else {
-        return res.json({
-          success: true,
-          data: {
-            title: `Tugas Interaktif: ${topic || 'Bangun Ruang'}`,
-            problem: responseText,
-            hint: 'Gunakan rumus luas permukaan atau volume yang sesuai dengan bentuk bangun ruang pada soal.',
-            solution: 'Perhatikan komponen-komponen yang diketahui (panjang, lebar, tinggi, jari-jari) lalu masukkan ke rumus.',
-            answer: 'Silakan periksa perhitungan Anda.'
-          }
-        });
+        return res.json({ success: true, data: parsed, isAI: true });
       }
     } catch (error) {
-      console.error('Error generating AI task:', error);
+      console.error('Error generating AI task with Gemini API:', error);
     }
   }
 
-  // Fallback if AI key is missing or fails
-  const fallbackTasks: Record<string, any[]> = {
-    'Sisi Datar': [
-      {
-        title: 'Tugas Kontekstual: Kemasan Kado Ulang Tahun (Kubus & Balok)',
-        problem: 'Budi ingin membungkus dua jenis hadiah ulang tahun. Hadiah pertama berbentuk kubus dengan panjang rusuk 15 cm. Hadiah kedua berbentuk balok dengan ukuran panjang 20 cm, lebar 12 cm, dan tinggi 10 cm. Jika kertas kado yang tersedia berukuran 60 cm x 40 cm, apakah kertas kado tersebut cukup untuk membungkus kedua hadiah itu? Berikan alasan perhitunganmu!',
-        hint: 'Hitung Luas Permukaan Kubus ($6s^2$) dan Luas Permukaan Balok ($2(pl + pt + lt)$), lalu bandingkan dengan Luas Kertas Kado ($60 \\times 40$).',
-        solution: '1. Luas Kado Kubus = 6 × 15² = 6 × 225 = 1.350 cm².\n2. Luas Kado Balok = 2 × (20×12 + 20×10 + 12×10) = 2 × (240 + 200 + 120) = 2 × 560 = 1.120 cm².\n3. Total Luas Diperlukan = 1.350 + 1.120 = 2.470 cm².\n4. Luas Kertas Kado = 60 × 40 = 2.400 cm².\nKarena 2.400 cm² < 2.470 cm², maka kertas kado TIDAK CUKUP (kurang 70 cm²).',
-        answer: 'Kertas kado tidak cukup karena butuh 2.470 cm², sedangkan yang ada hanya 2.400 cm².'
-      }
-    ],
-    'Sisi Lengkung': [
-      {
-        title: 'Tugas Kontekstual: Kapasitas Tangki Air Rumah Tangga (Tabung)',
-        problem: 'Sebuah keluarga menggunakan tangki penampung air berbentuk tabung dengan diameter alas 1,4 meter dan tinggi 2 meter. Jika tangki terisi penuh air dan keluarga tersebut mengonsumsi rata-rata 308 liter air per hari, dalam berapa hari air di dalam tangki akan habis? (Gunakan $\\pi = 22/7$, catat: $1 m^3 = 1.000$ liter).',
-        hint: 'Hitung Volume Tabung ($V = \\pi r^2 t$). Ingat jari-jari $r = d / 2 = 0,7$ meter. Konversikan $m^3$ ke liter dengan mengali 1.000, lalu bagi dengan konsumsi harian (308 liter/hari).',
-        solution: '1. Jari-jari r = 1,4 / 2 = 0,7 m.\n2. Volume = (22/7) × (0,7)² × 2 = (22/7) × 0,49 × 2 = 22 × 0,07 × 2 = 3,08 m³.\n3. Konversi ke Liter = 3,08 × 1.000 = 3.080 liter.\n4. Durasi Air Habis = 3.080 / 308 = 10 hari.',
-        answer: 'Air dalam tangki akan habis dalam waktu 10 hari.'
-      }
-    ]
-  };
+  // Dynamic fallback generator
+  const generatedTask = generateDynamicTask(topic, difficulty);
 
-  const topicKey = (topic && fallbackTasks[topic]) ? topic : 'Sisi Datar';
-  const selectedTask = fallbackTasks[topicKey][0];
-
-  res.json({
+  return res.json({
     success: true,
-    data: selectedTask,
+    data: generatedTask,
     isFallback: true
   });
 });

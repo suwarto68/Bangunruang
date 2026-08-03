@@ -36,7 +36,7 @@ export const Tugas: React.FC<TugasProps> = ({ setActiveSection }) => {
   const [passwordInput, setPasswordInput] = useState<string>('');
   const [passwordError, setPasswordError] = useState<string>('');
 
-  const fetchAITask = async () => {
+  const fetchAITask = async (reqTopic = topic, reqDiff = difficulty) => {
     setIsLoading(true);
     setShowHint(false);
     setShowSolution(false);
@@ -47,7 +47,7 @@ export const Tugas: React.FC<TugasProps> = ({ setActiveSection }) => {
       const res = await fetch('/api/generate-task', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ topic, difficulty })
+        body: JSON.stringify({ topic: reqTopic, difficulty: reqDiff })
       });
       const json = await res.json();
       if (json.success && json.data) {
@@ -55,9 +55,27 @@ export const Tugas: React.FC<TugasProps> = ({ setActiveSection }) => {
       }
     } catch (err) {
       console.error('Error fetching task:', err);
+      // Fallback local task if network fails
+      setTaskData({
+        title: `Tugas Kontekstual: Bangun Ruang ${reqTopic} (${reqDiff})`,
+        problem: `Ahmad sedang membuat kerajinan tangan berbentuk ${reqTopic === 'Sisi Lengkung' ? 'tabung dengan diameter 14 cm dan tinggi 20 cm' : 'balok berukuran 20 cm × 15 cm × 10 cm'}. Jika ia ingin melapisi seluruh permukaan kerajinan tersebut dengan kain flanel, berapa cm² luas kain flanel minimal yang dibutuhkan? (Gunakan $\\pi = 22/7$).`,
+        hint: `Gunakan rumus luas permukaan ${reqTopic === 'Sisi Lengkung' ? 'Tabung ($L = 2\\pi r(r+t)$)' : 'Balok ($L = 2(pl + pt + lt)$)'}.`,
+        solution: `1. Diketahui:\n   - ${reqTopic === 'Sisi Lengkung' ? 'Jari-jari (r) = 7 cm, Tinggi (t) = 20 cm' : 'p = 20, l = 15, t = 10'}\n2. Perhitungan Luas Permukaan:\n   ${reqTopic === 'Sisi Lengkung' ? 'L = 2 × (22/7) × 7 × (7 + 20) = 44 × 27 = 1.188 cm²' : 'L = 2 × (20×15 + 20×10 + 15×10) = 2 × (300 + 200 + 150) = 1.300 cm²'}.`,
+        answer: `Luas kain flanel minimal yang dibutuhkan adalah ${reqTopic === 'Sisi Lengkung' ? '1.188 cm²' : '1.300 cm²'}.`
+      });
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const handleTopicChange = (newTopic: 'Sisi Datar' | 'Sisi Lengkung' | 'Kontekstual') => {
+    setTopic(newTopic);
+    fetchAITask(newTopic, difficulty);
+  };
+
+  const handleDifficultyChange = (newDiff: 'Mudah' | 'Sedang' | 'Tantangan/HOTS') => {
+    setDifficulty(newDiff);
+    fetchAITask(topic, newDiff);
   };
 
   const handleToggleSolution = () => {
@@ -124,7 +142,7 @@ export const Tugas: React.FC<TugasProps> = ({ setActiveSection }) => {
 
           <button
             id="generate-ai-task-btn"
-            onClick={fetchAITask}
+            onClick={() => fetchAITask(topic, difficulty)}
             disabled={isLoading}
             className="px-5 py-2.5 rounded-2xl bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white font-bold text-xs sm:text-sm shadow-lg shadow-purple-500/20 flex items-center gap-2 cursor-pointer transition-all disabled:opacity-50"
           >
@@ -139,8 +157,8 @@ export const Tugas: React.FC<TugasProps> = ({ setActiveSection }) => {
             <label className="text-xs font-bold text-slate-300 uppercase">Topik Bangun Ruang</label>
             <select
               value={topic}
-              onChange={(e) => setTopic(e.target.value as any)}
-              className="w-full bg-slate-800 border border-slate-700 rounded-xl px-4 py-2.5 text-xs sm:text-sm font-semibold text-white focus:outline-none focus:ring-2 focus:ring-purple-500"
+              onChange={(e) => handleTopicChange(e.target.value as any)}
+              className="w-full bg-slate-800 border border-slate-700 rounded-xl px-4 py-2.5 text-xs sm:text-sm font-semibold text-white focus:outline-none focus:ring-2 focus:ring-purple-500 cursor-pointer"
             >
               <option value="Sisi Datar">Bangun Ruang Sisi Datar (Kubus, Balok, Prisma, Limas)</option>
               <option value="Sisi Lengkung">Bangun Ruang Sisi Lengkung (Tabung, Kerucut, Bola)</option>
@@ -152,8 +170,8 @@ export const Tugas: React.FC<TugasProps> = ({ setActiveSection }) => {
             <label className="text-xs font-bold text-slate-300 uppercase">Tingkat Kesulitan</label>
             <select
               value={difficulty}
-              onChange={(e) => setDifficulty(e.target.value as any)}
-              className="w-full bg-slate-800 border border-slate-700 rounded-xl px-4 py-2.5 text-xs sm:text-sm font-semibold text-white focus:outline-none focus:ring-2 focus:ring-purple-500"
+              onChange={(e) => handleDifficultyChange(e.target.value as any)}
+              className="w-full bg-slate-800 border border-slate-700 rounded-xl px-4 py-2.5 text-xs sm:text-sm font-semibold text-white focus:outline-none focus:ring-2 focus:ring-purple-500 cursor-pointer"
             >
               <option value="Mudah">Mudah (Pemahaman Konsep)</option>
               <option value="Sedang">Sedang (Aplikasi Rumus)</option>
