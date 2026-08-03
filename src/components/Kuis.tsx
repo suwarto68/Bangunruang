@@ -16,7 +16,12 @@ import {
   FileSpreadsheet,
   ArrowRight,
   User,
-  Sparkles
+  Sparkles,
+  Lock,
+  Unlock,
+  KeyRound,
+  X,
+  School
 } from 'lucide-react';
 
 interface KuisProps {
@@ -25,15 +30,22 @@ interface KuisProps {
 
 export const Kuis: React.FC<KuisProps> = ({ setActiveSection }) => {
   const [studentName, setStudentName] = useState<string>('');
+  const [studentClass, setStudentClass] = useState<string>('Kelas 9A');
   const [isQuizStarted, setIsQuizStarted] = useState<boolean>(false);
   const [currentQuestionIdx, setCurrentQuestionIdx] = useState<number>(0);
   const [userAnswers, setUserAnswers] = useState<Record<number, number>>({});
   const [isSubmitted, setIsSubmitted] = useState<boolean>(false);
-  const [timeLeft, setTimeLeft] = useState<number>(600); // 10 minutes timer
+  const [timeLeft, setTimeLeft] = useState<number>(1500); // 25 minutes timer for 25 questions
   const [showAppsScriptModal, setShowAppsScriptModal] = useState<boolean>(false);
   const [copySuccess, setCopySuccess] = useState<boolean>(false);
   const [sendingSpreadsheet, setSendingSpreadsheet] = useState<boolean>(false);
   const [spreadsheetSentSuccess, setSpreadsheetSentSuccess] = useState<boolean>(false);
+
+  // Password state for unlocking solutions review
+  const [isSolutionUnlocked, setIsSolutionUnlocked] = useState<boolean>(false);
+  const [showPasswordModal, setShowPasswordModal] = useState<boolean>(false);
+  const [passwordInput, setPasswordInput] = useState<string>('');
+  const [passwordError, setPasswordError] = useState<string>('');
 
   const certCanvasRef = useRef<HTMLCanvasElement | null>(null);
 
@@ -61,7 +73,8 @@ export const Kuis: React.FC<KuisProps> = ({ setActiveSection }) => {
     setCurrentQuestionIdx(0);
     setUserAnswers({});
     setIsSubmitted(false);
-    setTimeLeft(600);
+    setIsSolutionUnlocked(false);
+    setTimeLeft(1500); // 25 minutes
   };
 
   const handleSelectOption = (questionId: number, optionIdx: number) => {
@@ -70,17 +83,28 @@ export const Kuis: React.FC<KuisProps> = ({ setActiveSection }) => {
   };
 
   const calculateScore = () => {
-    let scoreCount = 0;
+    let correctCount = 0;
     QUIZ_QUESTIONS.forEach(q => {
       if (userAnswers[q.id] === q.correctAnswer) {
-        scoreCount += 10; // 10 points per question
+        correctCount += 1;
       }
     });
-    return scoreCount;
+    return Math.round((correctCount / QUIZ_QUESTIONS.length) * 100);
   };
 
   const handleSubmitQuiz = () => {
     setIsSubmitted(true);
+  };
+
+  const handleVerifyPassword = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (passwordInput.trim().toLowerCase() === 'suwarto') {
+      setIsSolutionUnlocked(true);
+      setShowPasswordModal(false);
+      setPasswordError('');
+    } else {
+      setPasswordError('Kata sandi salah! Masukkan kata sandi yang benar untuk membuka kunci pembahasan.');
+    }
   };
 
   const formatTime = (seconds: number) => {
@@ -120,7 +144,7 @@ export const Kuis: React.FC<KuisProps> = ({ setActiveSection }) => {
 
       // Header Text
       ctx.fillStyle = '#fbbf24';
-      ctx.font = 'bold 36px sans-serif';
+      ctx.font = 'bold 34px sans-serif';
       ctx.textAlign = 'center';
       ctx.fillText('SERTIFIKAT KELULUSAN PEMBELAJARAN DIGITAL', 500, 110);
 
@@ -131,30 +155,34 @@ export const Kuis: React.FC<KuisProps> = ({ setActiveSection }) => {
       // Subtitle
       ctx.fillStyle = '#cbd5e1';
       ctx.font = '16px sans-serif';
-      ctx.fillText('Diberikan secara resmi kepada peserta didik:', 500, 220);
+      ctx.fillText('Diberikan secara resmi kepada peserta didik:', 500, 210);
 
-      // Student Name
+      // Student Name & Class
       ctx.fillStyle = '#ffffff';
-      ctx.font = 'extrabold 42px sans-serif';
-      ctx.fillText(studentName.toUpperCase(), 500, 280);
+      ctx.font = 'extrabold 38px sans-serif';
+      ctx.fillText(studentName.toUpperCase(), 500, 265);
+
+      ctx.fillStyle = '#38bdf8';
+      ctx.font = 'bold 20px sans-serif';
+      ctx.fillText(`[ ${studentClass} ]`, 500, 300);
 
       // Divider line
       ctx.strokeStyle = '#6366f1';
       ctx.lineWidth = 3;
       ctx.beginPath();
-      ctx.moveTo(300, 305);
-      ctx.lineTo(700, 305);
+      ctx.moveTo(300, 320);
+      ctx.lineTo(700, 320);
       ctx.stroke();
 
       // Achievement Text
       ctx.fillStyle = '#e2e8f0';
-      ctx.font = '18px sans-serif';
-      ctx.fillText(`Telah menyelesaikan Kuis Pembelajaran Interaktif Bangun Ruang dengan nilai:`, 500, 350);
+      ctx.font = '16px sans-serif';
+      ctx.fillText(`Telah menyelesaikan 25 Soal Kuis Interaktif Bangun Ruang dengan nilai:`, 500, 360);
 
       // Score Badge Circle
       ctx.fillStyle = '#1e293b';
       ctx.beginPath();
-      ctx.arc(500, 430, 50, 0, Math.PI * 2);
+      ctx.arc(500, 435, 50, 0, Math.PI * 2);
       ctx.fill();
       ctx.strokeStyle = '#3b82f6';
       ctx.lineWidth = 4;
@@ -162,10 +190,10 @@ export const Kuis: React.FC<KuisProps> = ({ setActiveSection }) => {
 
       ctx.fillStyle = '#38bdf8';
       ctx.font = 'bold 38px sans-serif';
-      ctx.fillText(`${totalScore}`, 500, 442);
+      ctx.fillText(`${totalScore}`, 500, 448);
 
       // Predikat text
-      const gradeText = totalScore >= 80 ? 'SANGAT MEMUASKAN (A)' : totalScore >= 60 ? 'BAIK (B)' : 'CUKUP (C)';
+      const gradeText = totalScore >= 80 ? 'SANGAT MEMUASKAN (A)' : totalScore >= 70 ? 'BAIK (B)' : 'CUKUP (C)';
       ctx.fillStyle = '#fbbf24';
       ctx.font = 'bold 16px sans-serif';
       ctx.fillText(`Predikat: ${gradeText}`, 500, 515);
@@ -185,18 +213,14 @@ export const Kuis: React.FC<KuisProps> = ({ setActiveSection }) => {
       ctx.font = 'bold 20px sans-serif';
       ctx.fillText(`Suwarto, S.Pd`, 900, 620);
     }
-  }, [isSubmitted, totalScore, studentName]);
+  }, [isSubmitted, totalScore, studentName, studentClass]);
 
   const downloadCertificate = () => {
     if (!certCanvasRef.current) return;
     const link = document.createElement('a');
-    link.download = `Sertifikat_BangunRuang_${studentName.replace(/\s+/g, '_')}.png`;
+    link.download = `Sertifikat_BangunRuang_${studentName.replace(/\s+/g, '_')}_${studentClass}.png`;
     link.href = certCanvasRef.current.toDataURL('image/png');
     link.click();
-  };
-
-  const printCertificate = () => {
-    window.print();
   };
 
   const googleAppsScriptCode = `/**
@@ -212,8 +236,8 @@ function doPost(e) {
     
     // Jika sheet baru, buat header
     if (sheet.getLastRow() === 0) {
-      sheet.appendRow(["Waktu Selesai", "Nama Siswa", "Nilai Kuis", "Status Kelulusan", "Mata Pelajaran"]);
-      sheet.getRange(1, 1, 1, 5).setFontWeight("bold").setBackground("#3b82f6").setFontColor("#ffffff");
+      sheet.appendRow(["Waktu Selesai", "Nama Siswa", "Kelas", "Nilai Kuis", "Status Kelulusan", "Mata Pelajaran"]);
+      sheet.getRange(1, 1, 1, 6).setFontWeight("bold").setBackground("#3b82f6").setFontColor("#ffffff");
     }
     
     var data = JSON.parse(e.postData.contents);
@@ -223,6 +247,7 @@ function doPost(e) {
     sheet.appendRow([
       timestamp,
       data.studentName,
+      data.studentClass || "Kelas 9A",
       data.score,
       status,
       "Matematika Kelas 9 BAB 2"
@@ -277,11 +302,11 @@ function doPost(e) {
           Kuis Interaktif BAB 2: BANGUN RUANG
         </h1>
         <p className="text-slate-300 text-sm sm:text-base leading-relaxed">
-          Uji pemahamanmu dengan menjawab 10 soal pilihan ganda. Raih nilai minimal 70 untuk mendapatkan Sertifikat Kelulusan Resmi!
+          Uji pemahamanmu dengan menjawab <strong className="text-white">25 soal pilihan ganda</strong> lengkap. Raih nilai minimal 70 untuk mendapatkan Sertifikat Kelulusan Resmi!
         </p>
       </div>
 
-      {/* Screen 1: Name Input Form before starting */}
+      {/* Screen 1: Name & Class Input Form before starting */}
       {!isQuizStarted && (
         <div className="max-w-xl mx-auto bg-slate-900 rounded-3xl border border-slate-800 p-8 shadow-2xl space-y-6 text-center">
           <div className="w-16 h-16 rounded-2xl bg-gradient-to-tr from-blue-600 to-indigo-600 text-white flex items-center justify-center mx-auto shadow-lg shadow-blue-500/30">
@@ -291,12 +316,12 @@ function doPost(e) {
           <div className="space-y-2">
             <h2 className="text-2xl font-extrabold text-white">Masukkan Identitas Siswa</h2>
             <p className="text-slate-400 text-xs sm:text-sm">
-              Nama lengkap kamu akan tercetak di Sertifikat Kelulusan dan rekap nilai Google Spreadsheet.
+              Nama lengkap dan kelas kamu akan tercetak di Sertifikat Kelulusan dan rekap nilai Google Spreadsheet.
             </p>
           </div>
 
-          <form onSubmit={handleStartQuiz} className="space-y-4">
-            <div className="space-y-1 text-left">
+          <form onSubmit={handleStartQuiz} className="space-y-5 text-left">
+            <div className="space-y-1">
               <label className="text-xs font-bold text-slate-300 uppercase tracking-wider">Nama Lengkap Siswa *</label>
               <input
                 type="text"
@@ -304,21 +329,45 @@ function doPost(e) {
                 placeholder="Contoh: Ahmad Rizky Saputra"
                 value={studentName}
                 onChange={(e) => setStudentName(e.target.value)}
-                className="w-full bg-slate-800 border border-slate-700 rounded-2xl px-4 py-3 text-base font-semibold text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full bg-slate-800 border border-slate-700 rounded-2xl px-4 py-3 text-sm font-semibold text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
               />
+            </div>
+
+            {/* Class Selection: 9A or 9B */}
+            <div className="space-y-2">
+              <label className="text-xs font-bold text-slate-300 uppercase tracking-wider block">
+                Pilihan Kelas *
+              </label>
+              <div className="grid grid-cols-2 gap-3">
+                {['Kelas 9A', 'Kelas 9B'].map((cls) => (
+                  <button
+                    key={cls}
+                    type="button"
+                    onClick={() => setStudentClass(cls)}
+                    className={`p-3.5 rounded-2xl border font-bold text-sm flex items-center justify-center gap-2 cursor-pointer transition-all ${
+                      studentClass === cls
+                        ? 'bg-blue-600 text-white border-blue-400 shadow-lg shadow-blue-500/20'
+                        : 'bg-slate-800 text-slate-300 border-slate-700 hover:bg-slate-750'
+                    }`}
+                  >
+                    <School className="w-4 h-4" />
+                    <span>{cls}</span>
+                  </button>
+                ))}
+              </div>
             </div>
 
             <button
               type="submit"
-              className="w-full py-4 rounded-2xl bg-gradient-to-r from-blue-600 to-indigo-600 text-white font-extrabold text-base shadow-xl shadow-blue-600/30 hover:scale-[1.02] active:scale-[0.98] transition-all cursor-pointer flex items-center justify-center gap-2"
+              className="w-full py-4 rounded-2xl bg-gradient-to-r from-blue-600 to-indigo-600 text-white font-extrabold text-base shadow-xl shadow-blue-600/30 hover:scale-[1.02] active:scale-[0.98] transition-all cursor-pointer flex items-center justify-center gap-2 mt-4"
             >
-              <span>Mulai Kerjakan Kuis (10 Soal)</span>
+              <span>Mulai Kerjakan Kuis (25 Soal)</span>
               <ArrowRight className="w-5 h-5" />
             </button>
           </form>
 
           <div className="text-xs text-slate-400 bg-slate-950 p-4 rounded-xl border border-slate-800">
-            <strong>Aturan Kuis:</strong> Waktu pengerjaan 10 menit • 10 Soal Pilihan Ganda • Nilai Maksimal 100 • Pembahasan Soal Otomatis.
+            <strong>Aturan Kuis:</strong> Waktu pengerjaan 25 menit • 25 Soal Pilihan Ganda Lengkap • Nilai Maksimal 100 • Pembahasan Soal Terkunci Password.
           </div>
         </div>
       )}
@@ -333,16 +382,39 @@ function doPost(e) {
                 Soal {currentQuestionIdx + 1} dari {QUIZ_QUESTIONS.length}
               </span>
               <span className="text-xs font-semibold text-slate-400">
-                Siswa: <strong className="text-white">{studentName}</strong>
+                Siswa: <strong className="text-white">{studentName}</strong> ({studentClass})
               </span>
             </div>
 
             <div className={`flex items-center gap-2 px-3.5 py-1.5 rounded-full font-mono text-sm font-bold ${
-              timeLeft < 120 ? 'bg-rose-500/20 text-rose-300 border border-rose-500/40 animate-pulse' : 'bg-slate-800 text-blue-300 border border-slate-700'
+              timeLeft < 300 ? 'bg-rose-500/20 text-rose-300 border border-rose-500/40 animate-pulse' : 'bg-slate-800 text-blue-300 border border-slate-700'
             }`}>
               <Clock className="w-4 h-4" />
               <span>Sisa Waktu: {formatTime(timeLeft)}</span>
             </div>
+          </div>
+
+          {/* Question Numbers Quick Navigator Grid */}
+          <div className="flex flex-wrap gap-1.5 bg-slate-950 p-3 rounded-2xl border border-slate-800 max-h-24 overflow-y-auto">
+            {QUIZ_QUESTIONS.map((q, qIdx) => {
+              const isAnswered = userAnswers[q.id] !== undefined;
+              const isCurrent = currentQuestionIdx === qIdx;
+              return (
+                <button
+                  key={q.id}
+                  onClick={() => setCurrentQuestionIdx(qIdx)}
+                  className={`w-7 h-7 rounded-lg text-xs font-bold flex items-center justify-center transition-all cursor-pointer ${
+                    isCurrent
+                      ? 'bg-blue-500 text-white ring-2 ring-blue-300'
+                      : isAnswered
+                      ? 'bg-emerald-600/30 text-emerald-300 border border-emerald-500/40'
+                      : 'bg-slate-800 text-slate-400 hover:bg-slate-700'
+                  }`}
+                >
+                  {qIdx + 1}
+                </button>
+              );
+            })}
           </div>
 
           {/* Current Question Display */}
@@ -437,7 +509,7 @@ function doPost(e) {
             <div className="space-y-1">
               <h2 className="text-3xl font-extrabold text-white">Hasil Evaluasi Pembelajaran</h2>
               <p className="text-slate-300 text-sm">
-                Selamat <strong className="text-white">{studentName}</strong>! Kamu telah menyelesaikan kuis BAB 2 Bangun Ruang.
+                Selamat <strong className="text-white">{studentName}</strong> ({studentClass})! Kamu telah menyelesaikan 25 soal kuis BAB 2 Bangun Ruang.
               </p>
             </div>
 
@@ -511,60 +583,181 @@ function doPost(e) {
             </div>
           </div>
 
-          {/* Detailed Question Review Breakdown */}
+          {/* Password Protected Detailed Question Review Breakdown */}
           <div className="bg-slate-900 rounded-3xl border border-slate-800 p-6 sm:p-8 shadow-xl space-y-6">
-            <h3 className="text-xl font-bold text-white border-b border-slate-800 pb-4">
-              Pembahasan & Review Pembelajaran Per Soal
-            </h3>
+            <div className="flex items-center justify-between flex-wrap gap-4 border-b border-slate-800 pb-4">
+              <div className="flex items-center gap-3">
+                <div className="p-3 rounded-2xl bg-indigo-500/10 border border-indigo-500/20 text-indigo-400">
+                  <KeyRound className="w-6 h-6" />
+                </div>
+                <div>
+                  <h3 className="text-xl font-bold text-white">
+                    Pembahasan & Review Pembelajaran Per Soal (25 Soal)
+                  </h3>
+                  <p className="text-xs text-slate-400">Akses pembahasan lengkap dilindungi oleh kata sandi guru</p>
+                </div>
+              </div>
 
-            <div className="space-y-4">
-              {QUIZ_QUESTIONS.map((q, idx) => {
-                const userAns = userAnswers[q.id];
-                const isCorrect = userAns === q.correctAnswer;
-                return (
-                  <div
-                    key={q.id}
-                    className={`p-5 rounded-2xl border space-y-3 ${
-                      isCorrect ? 'bg-slate-800/60 border-emerald-500/40' : 'bg-slate-800/60 border-rose-500/40'
-                    }`}
-                  >
-                    <div className="flex items-start justify-between gap-4">
-                      <div className="flex items-center gap-2">
-                        <span className={`w-7 h-7 rounded-xl flex items-center justify-center font-bold text-xs ${
-                          isCorrect ? 'bg-emerald-500/20 text-emerald-300' : 'bg-rose-500/20 text-rose-300'
-                        }`}>
-                          {idx + 1}
-                        </span>
-                        <span className="text-xs font-semibold text-slate-400">{q.category}</span>
-                      </div>
-                      <span className={`text-xs px-2.5 py-1 rounded-full font-bold flex items-center gap-1 ${
-                        isCorrect ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40' : 'bg-rose-500/20 text-rose-300 border border-rose-500/40'
-                      }`}>
-                        {isCorrect ? <CheckCircle2 className="w-3.5 h-3.5" /> : <XCircle className="w-3.5 h-3.5" />}
-                        {isCorrect ? 'Benar (+10)' : 'Salah'}
-                      </span>
-                    </div>
-
-                    <p className="text-sm font-bold text-white">{q.question}</p>
-
-                    <div className="text-xs space-y-1">
-                      <div className="text-slate-300">
-                        Jawaban Kamu: <strong className={isCorrect ? 'text-emerald-300' : 'text-rose-300'}>{q.options[userAns] || 'Belum Dijawab'}</strong>
-                      </div>
-                      {!isCorrect && (
-                        <div className="text-slate-300">
-                          Jawaban Benar: <strong className="text-emerald-300">{q.options[q.correctAnswer]}</strong>
-                        </div>
-                      )}
-                    </div>
-
-                    <div className="bg-slate-950 p-3 rounded-xl border border-slate-800 text-xs text-slate-300 italic">
-                      💡 <strong>Pembahasan:</strong> {q.explanation}
-                    </div>
-                  </div>
-                );
-              })}
+              <button
+                id="toggle-quiz-solution-btn"
+                onClick={() => {
+                  if (isSolutionUnlocked) {
+                    setIsSolutionUnlocked(false);
+                  } else {
+                    setPasswordInput('');
+                    setPasswordError('');
+                    setShowPasswordModal(true);
+                  }
+                }}
+                className="px-4 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-indigo-300 font-bold text-xs sm:text-sm flex items-center gap-2 border border-slate-700 cursor-pointer"
+              >
+                {!isSolutionUnlocked ? (
+                  <Lock className="w-4 h-4 text-amber-400" />
+                ) : (
+                  <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+                )}
+                <span>{isSolutionUnlocked ? 'Sembunyikan Pembahasan Soal' : 'Lihat Kunci Pembahasan Kuis'}</span>
+              </button>
             </div>
+
+            {!isSolutionUnlocked ? (
+              <div className="bg-slate-950 p-8 rounded-2xl border border-slate-800 text-center space-y-4">
+                <div className="w-14 h-14 rounded-2xl bg-amber-500/10 border border-amber-500/20 text-amber-400 flex items-center justify-center mx-auto">
+                  <Lock className="w-7 h-7" />
+                </div>
+                <div className="space-y-1">
+                  <h4 className="text-lg font-bold text-white">Akses Pembahasan Terkunci</h4>
+                  <p className="text-xs text-slate-400 max-w-md mx-auto">
+                    Kunci pembahasan 25 soal kuis ini membutuhkan kata sandi resmi dari Guru Pengampu. Klik tombol di bawah untuk memasukkan kata sandi.
+                  </p>
+                </div>
+                <button
+                  onClick={() => {
+                    setPasswordInput('');
+                    setPasswordError('');
+                    setShowPasswordModal(true);
+                  }}
+                  className="px-6 py-3 rounded-xl bg-gradient-to-r from-amber-600 to-indigo-600 text-white font-bold text-xs sm:text-sm shadow-lg shadow-amber-500/20 inline-flex items-center gap-2 cursor-pointer"
+                >
+                  <KeyRound className="w-4 h-4" />
+                  <span>Buka Kunci Pembahasan Kuis (Password)</span>
+                </button>
+              </div>
+            ) : (
+              <div className="space-y-4 animate-fadeIn">
+                {QUIZ_QUESTIONS.map((q, idx) => {
+                  const userAns = userAnswers[q.id];
+                  const isCorrect = userAns === q.correctAnswer;
+                  return (
+                    <div
+                      key={q.id}
+                      className={`p-5 rounded-2xl border space-y-3 ${
+                        isCorrect ? 'bg-slate-800/60 border-emerald-500/40' : 'bg-slate-800/60 border-rose-500/40'
+                      }`}
+                    >
+                      <div className="flex items-start justify-between gap-4">
+                        <div className="flex items-center gap-2">
+                          <span className={`w-7 h-7 rounded-xl flex items-center justify-center font-bold text-xs ${
+                            isCorrect ? 'bg-emerald-500/20 text-emerald-300' : 'bg-rose-500/20 text-rose-300'
+                          }`}>
+                            {idx + 1}
+                          </span>
+                          <span className="text-xs font-semibold text-slate-400">{q.category}</span>
+                        </div>
+                        <span className={`text-xs px-2.5 py-1 rounded-full font-bold flex items-center gap-1 ${
+                          isCorrect ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40' : 'bg-rose-500/20 text-rose-300 border border-rose-500/40'
+                        }`}>
+                          {isCorrect ? <CheckCircle2 className="w-3.5 h-3.5" /> : <XCircle className="w-3.5 h-3.5" />}
+                          {isCorrect ? 'Benar (+4)' : 'Salah'}
+                        </span>
+                      </div>
+
+                      <p className="text-sm font-bold text-white">{q.question}</p>
+
+                      <div className="text-xs space-y-1">
+                        <div className="text-slate-300">
+                          Jawaban Kamu: <strong className={isCorrect ? 'text-emerald-300' : 'text-rose-300'}>{q.options[userAns] !== undefined ? q.options[userAns] : 'Belum Dijawab'}</strong>
+                        </div>
+                        {!isCorrect && (
+                          <div className="text-slate-300">
+                            Jawaban Benar: <strong className="text-emerald-300">{q.options[q.correctAnswer]}</strong>
+                          </div>
+                        )}
+                      </div>
+
+                      <div className="bg-slate-950 p-3 rounded-xl border border-slate-800 text-xs text-slate-300 italic">
+                        💡 <strong>Pembahasan:</strong> {q.explanation}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Password Modal for Unlocking Quiz Solutions */}
+      {showPasswordModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm animate-fadeIn">
+          <div className="bg-slate-900 border border-slate-800 rounded-3xl p-6 sm:p-8 max-w-md w-full shadow-2xl relative space-y-5">
+            <button
+              onClick={() => setShowPasswordModal(false)}
+              className="absolute top-4 right-4 text-slate-400 hover:text-white p-2 rounded-xl bg-slate-800/50 hover:bg-slate-800 transition-colors"
+            >
+              <X className="w-5 h-5" />
+            </button>
+
+            <div className="flex items-center gap-3">
+              <div className="p-3 rounded-2xl bg-indigo-500/10 border border-indigo-500/20 text-indigo-400">
+                <KeyRound className="w-6 h-6" />
+              </div>
+              <div>
+                <h3 className="text-lg font-bold text-white">Akses Pembahasan Terkunci</h3>
+                <p className="text-xs text-slate-400">Masukkan kata sandi guru untuk membuka pembahasan kuis</p>
+              </div>
+            </div>
+
+            <form onSubmit={handleVerifyPassword} className="space-y-4">
+              <div className="space-y-2">
+                <label className="text-xs font-bold text-slate-300 uppercase block">Kata Sandi (Password)</label>
+                <div className="relative">
+                  <input
+                    type="password"
+                    placeholder="Masukkan kata sandi..."
+                    value={passwordInput}
+                    onChange={(e) => {
+                      setPasswordInput(e.target.value);
+                      if (passwordError) setPasswordError('');
+                    }}
+                    autoFocus
+                    className="w-full bg-slate-800 border border-slate-700 rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  />
+                </div>
+                {passwordError && (
+                  <p className="text-xs text-rose-400 font-semibold animate-fadeIn">
+                    ⚠️ {passwordError}
+                  </p>
+                )}
+              </div>
+
+              <div className="flex items-center justify-end gap-3 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setShowPasswordModal(false)}
+                  className="px-4 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-bold transition-colors cursor-pointer"
+                >
+                  Batal
+                </button>
+                <button
+                  type="submit"
+                  className="px-5 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs shadow-lg shadow-indigo-500/20 flex items-center gap-2 cursor-pointer"
+                >
+                  <Unlock className="w-4 h-4" />
+                  <span>Buka Pembahasan</span>
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}

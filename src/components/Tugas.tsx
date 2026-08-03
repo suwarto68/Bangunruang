@@ -9,7 +9,11 @@ import {
   Send, 
   HelpCircle,
   ArrowRight,
-  BookOpen
+  BookOpen,
+  Lock,
+  Unlock,
+  KeyRound,
+  X
 } from 'lucide-react';
 
 interface TugasProps {
@@ -25,6 +29,12 @@ export const Tugas: React.FC<TugasProps> = ({ setActiveSection }) => {
   const [showSolution, setShowSolution] = useState<boolean>(false);
   const [studentResponse, setStudentResponse] = useState<string>('');
   const [isAnswerSubmitted, setIsAnswerSubmitted] = useState<boolean>(false);
+
+  // Password protection state
+  const [isUnlocked, setIsUnlocked] = useState<boolean>(false);
+  const [showPasswordModal, setShowPasswordModal] = useState<boolean>(false);
+  const [passwordInput, setPasswordInput] = useState<string>('');
+  const [passwordError, setPasswordError] = useState<string>('');
 
   const fetchAITask = async () => {
     setIsLoading(true);
@@ -47,6 +57,32 @@ export const Tugas: React.FC<TugasProps> = ({ setActiveSection }) => {
       console.error('Error fetching task:', err);
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const handleToggleSolution = () => {
+    if (showSolution) {
+      setShowSolution(false);
+    } else {
+      if (isUnlocked) {
+        setShowSolution(true);
+      } else {
+        setPasswordInput('');
+        setPasswordError('');
+        setShowPasswordModal(true);
+      }
+    }
+  };
+
+  const handleVerifyPassword = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (passwordInput.trim().toLowerCase() === 'suwarto') {
+      setIsUnlocked(true);
+      setShowSolution(true);
+      setShowPasswordModal(false);
+      setPasswordError('');
+    } else {
+      setPasswordError('Kata sandi salah! Masukkan kata sandi yang benar untuk membuka pembahasan.');
     }
   };
 
@@ -192,10 +228,14 @@ export const Tugas: React.FC<TugasProps> = ({ setActiveSection }) => {
 
               <button
                 id="toggle-ai-solution-btn"
-                onClick={() => setShowSolution(!showSolution)}
+                onClick={handleToggleSolution}
                 className="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-indigo-300 font-bold text-xs flex items-center gap-2 border border-slate-700 cursor-pointer"
               >
-                <CheckCircle2 className="w-4 h-4 text-indigo-400" />
+                {!isUnlocked ? (
+                  <Lock className="w-4 h-4 text-amber-400" />
+                ) : (
+                  <CheckCircle2 className="w-4 h-4 text-indigo-400" />
+                )}
                 <span>{showSolution ? 'Sembunyikan Pembahasan AI' : 'Lihat Kunci Pembahasan AI'}</span>
               </button>
             </div>
@@ -224,6 +264,71 @@ export const Tugas: React.FC<TugasProps> = ({ setActiveSection }) => {
               </div>
             </div>
           )}
+        </div>
+      )}
+
+      {/* Password Modal */}
+      {showPasswordModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm animate-fadeIn">
+          <div className="bg-slate-900 border border-slate-800 rounded-3xl p-6 sm:p-8 max-w-md w-full shadow-2xl relative space-y-5">
+            <button
+              onClick={() => setShowPasswordModal(false)}
+              className="absolute top-4 right-4 text-slate-400 hover:text-white p-2 rounded-xl bg-slate-800/50 hover:bg-slate-800 transition-colors"
+            >
+              <X className="w-5 h-5" />
+            </button>
+
+            <div className="flex items-center gap-3">
+              <div className="p-3 rounded-2xl bg-indigo-500/10 border border-indigo-500/20 text-indigo-400">
+                <KeyRound className="w-6 h-6" />
+              </div>
+              <div>
+                <h3 className="text-lg font-bold text-white">Akses Pembahasan Terkunci</h3>
+                <p className="text-xs text-slate-400">Masukkan kata sandi guru untuk membuka kunci pembahasan</p>
+              </div>
+            </div>
+
+            <form onSubmit={handleVerifyPassword} className="space-y-4">
+              <div className="space-y-2">
+                <label className="text-xs font-bold text-slate-300 uppercase block">Kata Sandi (Password)</label>
+                <div className="relative">
+                  <input
+                    type="password"
+                    placeholder="Masukkan kata sandi..."
+                    value={passwordInput}
+                    onChange={(e) => {
+                      setPasswordInput(e.target.value);
+                      if (passwordError) setPasswordError('');
+                    }}
+                    autoFocus
+                    className="w-full bg-slate-800 border border-slate-700 rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  />
+                </div>
+                {passwordError && (
+                  <p className="text-xs text-rose-400 font-semibold animate-fadeIn">
+                    ⚠️ {passwordError}
+                  </p>
+                )}
+              </div>
+
+              <div className="flex items-center justify-end gap-3 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setShowPasswordModal(false)}
+                  className="px-4 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-bold transition-colors cursor-pointer"
+                >
+                  Batal
+                </button>
+                <button
+                  type="submit"
+                  className="px-5 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs shadow-lg shadow-indigo-500/20 flex items-center gap-2 cursor-pointer"
+                >
+                  <Unlock className="w-4 h-4" />
+                  <span>Buka Pembahasan</span>
+                </button>
+              </div>
+            </form>
+          </div>
         </div>
       )}
 
