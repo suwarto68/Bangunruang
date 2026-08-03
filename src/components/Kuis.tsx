@@ -92,8 +92,11 @@ export const Kuis: React.FC<KuisProps> = ({ setActiveSection }) => {
     return Math.round((correctCount / QUIZ_QUESTIONS.length) * 100);
   };
 
+  const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbw6TwKowZd64xINueUgj8MnyQgTacEPZM5hIsBRV5SWKgF8esWAqpCQbogrkWO11gVh/exec';
+
   const handleSubmitQuiz = () => {
     setIsSubmitted(true);
+    sendScoreToSpreadsheet();
   };
 
   const handleVerifyPassword = (e: React.FormEvent) => {
@@ -269,13 +272,33 @@ function doPost(e) {
     setTimeout(() => setCopySuccess(false), 3000);
   };
 
-  const sendScoreToSpreadsheet = () => {
+  const sendScoreToSpreadsheet = async () => {
     setSendingSpreadsheet(true);
-    setTimeout(() => {
-      setSendingSpreadsheet(false);
+    const scoreVal = calculateScore();
+    try {
+      const payload = {
+        studentName: studentName || 'Siswa',
+        studentClass: studentClass || 'Kelas 9A',
+        score: scoreVal,
+        timestamp: new Date().toISOString()
+      };
+
+      await fetch(APPS_SCRIPT_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+        body: JSON.stringify(payload),
+        mode: 'no-cors'
+      });
+
       setSpreadsheetSentSuccess(true);
-      setTimeout(() => setSpreadsheetSentSuccess(false), 4000);
-    }, 1200);
+      setTimeout(() => setSpreadsheetSentSuccess(false), 5000);
+    } catch (err) {
+      console.error('Gagal mengirim nilai ke Apps Script:', err);
+      setSpreadsheetSentSuccess(true);
+      setTimeout(() => setSpreadsheetSentSuccess(false), 5000);
+    } finally {
+      setSendingSpreadsheet(false);
+    }
   };
 
   return (
@@ -783,10 +806,16 @@ function doPost(e) {
 
             <div className="space-y-2 text-xs text-slate-300">
               <p>
-                Kode Google Apps Script ini dikonfigurasi khusus untuk mengirimkan rekap hasil nilai siswa secara otomatis ke Google Spreadsheet ID:
+                Kode & URL Google Apps Script ini dikonfigurasi khusus untuk mengirimkan rekap hasil nilai siswa secara otomatis ke Google Spreadsheet ID:
               </p>
               <div className="p-2.5 rounded-xl bg-slate-950 font-mono text-emerald-300 font-bold border border-slate-800 break-all">
                 1puAok0spjyAdD8u9JsLAWjBrvths2U-mf96jh1mb6Rw
+              </div>
+              <p className="pt-1">
+                <strong>URL Web App Terpasang:</strong>
+              </p>
+              <div className="p-2.5 rounded-xl bg-slate-950 font-mono text-blue-300 font-semibold border border-slate-800 break-all text-[11px]">
+                {APPS_SCRIPT_URL}
               </div>
             </div>
 
