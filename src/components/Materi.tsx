@@ -227,6 +227,21 @@ export const Materi: React.FC<MateriProps> = ({ setActiveSection }) => {
                             <line x1="70" y1="70" x2="85" y2="55" strokeWidth="2" />
                           </svg>
                         )}
+                        {item.shapeType === 'prisma' && (
+                          <svg className="w-36 h-36 stroke-purple-400 fill-purple-500/10" viewBox="0 0 100 100">
+                            <polygon points="50,15 20,40 80,40" strokeWidth="2" />
+                            <polygon points="50,55 20,80 80,80" strokeWidth="2" />
+                            <line x1="50" y1="15" x2="50" y2="55" strokeWidth="2" />
+                            <line x1="20" y1="40" x2="20" y2="80" strokeWidth="2" />
+                            <line x1="80" y1="40" x2="80" y2="80" strokeWidth="2" />
+                          </svg>
+                        )}
+                        {item.shapeType === 'bola' && (
+                          <svg className="w-36 h-36 stroke-rose-400 fill-rose-500/10" viewBox="0 0 100 100">
+                            <circle cx="50" cy="50" r="35" strokeWidth="2" />
+                            <ellipse cx="50" cy="50" rx="35" ry="12" strokeWidth="2" strokeDasharray="3,3" />
+                          </svg>
+                        )}
                         {item.shapeType === 'limas' && (
                           <svg className="w-36 h-36 stroke-emerald-400 fill-emerald-500/10" viewBox="0 0 100 100">
                             <polygon points="50,15 20,70 80,70" strokeWidth="2" />

@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { Canvas3DViewer } from './Canvas3DViewer';
+import { JaringJaringViewer } from './JaringJaringViewer';
 import { Shape3DType, NavSection } from '../types';
 import { 
   Box, 
@@ -22,7 +23,7 @@ export const Eksplorasi: React.FC<EksplorasiProps> = ({ setActiveSection }) => {
   const [selectedShape, setSelectedShape] = useState<Shape3DType>('kubus');
   const [wireframe, setWireframe] = useState<boolean>(false);
   const [scale, setScale] = useState<number>(100);
-  const [modeView, setModeView] = useState<'canvas' | 'geogebra'>('canvas');
+  const [modeView, setModeView] = useState<'canvas' | 'jaring' | 'geogebra'>('canvas');
 
   const shapeInfo: Record<Shape3DType, { name: string; category: string; desc: string; vertices: string; faces: string; edges: string; geogebraUrl: string }> = {
     kubus: {
@@ -152,24 +153,33 @@ export const Eksplorasi: React.FC<EksplorasiProps> = ({ setActiveSection }) => {
             </h3>
 
             {/* View Mode Toggle */}
-            <div className="flex rounded-xl bg-slate-950 p-1 border border-slate-800">
+            <div className="grid grid-cols-3 gap-1 rounded-xl bg-slate-950 p-1 border border-slate-800">
               <button
                 id="view-mode-canvas"
                 onClick={() => setModeView('canvas')}
-                className={`flex-1 py-2 text-xs font-bold rounded-lg transition-all cursor-pointer ${
+                className={`py-2 text-[11px] sm:text-xs font-bold rounded-lg transition-all cursor-pointer ${
                   modeView === 'canvas' ? 'bg-blue-600 text-white shadow' : 'text-slate-400 hover:text-white'
                 }`}
               >
-                Kanvas 3D Interaktif
+                Kanvas 3D
+              </button>
+              <button
+                id="view-mode-jaring"
+                onClick={() => setModeView('jaring')}
+                className={`py-2 text-[11px] sm:text-xs font-bold rounded-lg transition-all cursor-pointer ${
+                  modeView === 'jaring' ? 'bg-emerald-600 text-white shadow' : 'text-slate-400 hover:text-white'
+                }`}
+              >
+                Jaring-Jaring
               </button>
               <button
                 id="view-mode-geogebra"
                 onClick={() => setModeView('geogebra')}
-                className={`flex-1 py-2 text-xs font-bold rounded-lg transition-all cursor-pointer ${
+                className={`py-2 text-[11px] sm:text-xs font-bold rounded-lg transition-all cursor-pointer ${
                   modeView === 'geogebra' ? 'bg-indigo-600 text-white shadow' : 'text-slate-400 hover:text-white'
                 }`}
               >
-                Simulasi GeoGebra
+                GeoGebra
               </button>
             </div>
 
@@ -221,7 +231,7 @@ export const Eksplorasi: React.FC<EksplorasiProps> = ({ setActiveSection }) => {
               </h2>
             </div>
             <span className="text-xs font-bold px-3 py-1 rounded-full bg-blue-500/20 text-blue-300 border border-blue-500/30">
-              {modeView === 'canvas' ? 'HTML5 3D WebGL Projection' : 'GeoGebra 3D Embed'}
+              {modeView === 'canvas' ? 'HTML5 3D WebGL Projection' : modeView === 'jaring' ? 'Diagram Jaring-Jaring 2D' : 'GeoGebra 3D Embed'}
             </span>
           </div>
 
@@ -234,6 +244,8 @@ export const Eksplorasi: React.FC<EksplorasiProps> = ({ setActiveSection }) => {
                 unfoldProgress={0}
                 scale={scale}
               />
+            ) : modeView === 'jaring' ? (
+              <JaringJaringViewer shape={selectedShape} />
             ) : (
               <div className="w-full h-[380px] rounded-2xl overflow-hidden border border-slate-800 bg-slate-950 flex flex-col">
                 <iframe

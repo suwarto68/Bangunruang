@@ -227,5 +227,53 @@ export const MATERI_DATA: MateriItem[] = [
       }
     },
     shapeType: 'tabung'
+  },
+  {
+    id: 'materi-6',
+    title: '6. Eksplorasi & Analisis Jaring-Jaring Semua Bangun Ruang',
+    category: 'Klasifikasi',
+    badge: 'Jaring-Jaring BRSD & BRSL',
+    summary: 'Materi lengkap konstruksi dan karakteristik jaring-jaring 7 bangun ruang: Kubus, Balok, Prisma, Limas, Tabung, Kerucut, dan Bola.',
+    detailedContent: {
+      introduction: 'Jaring-jaring adalah gabungan bidang datar pembentuk bangun ruang tiga dimensi yang diperoleh dengan cara membelah bangun ruang mengikuti rusuk-rusuknya lalu membentangkannya menjadi satu bidang datar tanpa memisahkan bidang tersebut.',
+      properties: [
+        'Kubus: Terdiri dari 6 buah bidang persegikongruen (memiliki 11 bentuk jaring-jaring standar yang valid).',
+        'Balok: Terdiri dari 6 bidang persegi panjang dengan 3 pasang bidang identik yang sejajar (Alas-Tutup, Kiri-Kanan, Depan-Belakang).',
+        'Prisma Segitiga: Terdiri dari 2 bidang alas/tutup berbentuk segitiga kongruen dan 3 bidang selimut berbentuk persegi panjang.',
+        'Limas Segiempat: Terdiri dari 1 bidang alas berbentuk segiempat dan 4 bidang selimut berbentuk segitiga yang bertemu di 1 titik puncak.',
+        'Tabung: Terdiri dari 2 bidang lingkaran identik (Alas & Tutup) dan 1 selimut berbentuk persegi panjang berukuran (2πr × t).',
+        'Kerucut: Terdiri dari 1 lingkaran alas (πr²) dan 1 selimut berbentuk juring lingkaran dengan jari-jari s (garis pelukis) dan panjang busur 2πr.',
+        'Bola: Secara ideal digambarkan sebagai kumpulan 12 tembereng lengkung (Gore map projection) yang berpusat pada garis khatulistiwa.'
+      ],
+      formulas: [
+        {
+          name: 'Luas Jaring-Jaring Kubus',
+          formula: 'Luas Jaring-Jaring = 6 × (s × s)',
+          explanation: 'Jumlah luas 6 persegi pembentuk jaring-jaring'
+        },
+        {
+          name: 'Luas Jaring-Jaring Tabung',
+          formula: 'Luas Jaring-Jaring = 2(πr²) + (2πr × t)',
+          explanation: '2 × Luas Lingkaran + Luas Persegi Panjang Selimut'
+        },
+        {
+          name: 'Luas Jaring-Jaring Kerucut',
+          formula: 'Luas Jaring-Jaring = πr² + πrs',
+          explanation: 'Luas Lingkaran Alas + Luas Juring Selimut'
+        }
+      ],
+      exampleProblem: {
+        question: 'Sebuah lembaran seng akan dipotong membentuk jaring-jaring tabung tanpa tutup dengan jari-jari alas 14 cm dan tinggi 30 cm. Berapa cm² luas minimal seng yang diperlukan? (Gunakan π = 22/7)',
+        steps: [
+          'Jaring-jaring tabung tanpa tutup terdiri dari 1 lingkaran alas dan 1 persegi panjang selimut.',
+          'Luas Lingkaran Alas = πr² = (22/7) × 14² = 22 × 28 = 616 cm².',
+          'Panjang Selimut (Keliling Alas) = 2πr = 2 × (22/7) × 14 = 88 cm.',
+          'Luas Selimut = Panjang × Tinggi = 88 × 30 = 2.640 cm².',
+          'Total Luas Jaring-Jaring = 616 + 2.640 = 3.256 cm².'
+        ],
+        answer: 'Luas minimal seng yang diperlukan adalah 3.256 cm².'
+      }
+    },
+    shapeType: 'prisma'
   }
 ];

@@ -170,6 +170,64 @@ export const Canvas3DViewer: React.FC<Canvas3DViewerProps> = ({
           ctx.lineWidth = 2;
           ctx.stroke();
         });
+      } else if (shape === 'prisma') {
+        const w = baseSize * 0.6;
+        const h = baseSize * 0.7;
+        const d = baseSize * 0.6;
+
+        // Vertices for triangular prism (Alas & Tutup Segitiga)
+        // Top triangle (y = -h/2)
+        // Bottom triangle (y = h/2)
+        const vertices = [
+          [0, -h / 2, -d * 0.8],     // 0: Top front apex
+          [-w, -h / 2, d * 0.6],     // 1: Top back left
+          [w, -h / 2, d * 0.6],      // 2: Top back right
+          [0, h / 2, -d * 0.8],      // 3: Bottom front apex
+          [-w, h / 2, d * 0.6],      // 4: Bottom back left
+          [w, h / 2, d * 0.6]        // 5: Bottom back right
+        ];
+
+        const projected = vertices.map(v => project(v[0], v[1], v[2]));
+
+        // Faces:
+        // Top triangle: [0, 1, 2]
+        // Bottom triangle: [3, 5, 4]
+        // Front-left face: [0, 3, 4, 1]
+        // Front-right face: [0, 2, 5, 3]
+        // Back face: [1, 4, 5, 2]
+        const faces = [
+          { pts: [0, 1, 2], color: '#a855f7' },
+          { pts: [3, 5, 4], color: '#7e22ce' },
+          { pts: [0, 3, 4, 1], color: '#9333ea' },
+          { pts: [0, 2, 5, 3], color: '#c084fc' },
+          { pts: [1, 4, 5, 2], color: '#6b21a8' }
+        ];
+
+        // Sort faces by Z depth
+        faces.sort((a, b) => {
+          const zA = a.pts.reduce((sum, idx) => sum + projected[idx].z, 0) / a.pts.length;
+          const zB = b.pts.reduce((sum, idx) => sum + projected[idx].z, 0) / b.pts.length;
+          return zB - zA;
+        });
+
+        faces.forEach(face => {
+          ctx.beginPath();
+          ctx.moveTo(projected[face.pts[0]].px, projected[face.pts[0]].py);
+          for (let i = 1; i < face.pts.length; i++) {
+            ctx.lineTo(projected[face.pts[i]].px, projected[face.pts[i]].py);
+          }
+          ctx.closePath();
+
+          if (!wireframe) {
+            ctx.fillStyle = face.color;
+            ctx.globalAlpha = 0.85;
+            ctx.fill();
+            ctx.globalAlpha = 1.0;
+          }
+          ctx.strokeStyle = '#ffffff';
+          ctx.lineWidth = 2;
+          ctx.stroke();
+        });
       } else if (shape === 'limas') {
         const b = baseSize * 0.7;
         const h = baseSize * 0.8;
