@@ -1,0 +1,6 @@
+{
+  "name": "Media Pembelajaran Interaktif Bangun Ruang",
+  "description": "Media Pembelajaran Interaktif Matematika Kelas 9 Fase D - BAB 2: Bangun Ruang oleh Suwarto, S.Pd",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

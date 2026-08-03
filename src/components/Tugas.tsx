@@ -1,0 +1,249 @@
+import React, { useState } from 'react';
+import { TaskItem, NavSection } from '../types';
+import { 
+  FileText, 
+  Sparkles, 
+  Lightbulb, 
+  CheckCircle2, 
+  RefreshCw, 
+  Send, 
+  HelpCircle,
+  ArrowRight,
+  BookOpen
+} from 'lucide-react';
+
+interface TugasProps {
+  setActiveSection: (section: NavSection) => void;
+}
+
+export const Tugas: React.FC<TugasProps> = ({ setActiveSection }) => {
+  const [topic, setTopic] = useState<'Sisi Datar' | 'Sisi Lengkung' | 'Kontekstual'>('Sisi Datar');
+  const [difficulty, setDifficulty] = useState<'Mudah' | 'Sedang' | 'Tantangan/HOTS'>('Sedang');
+  const [taskData, setTaskData] = useState<TaskItem | null>(null);
+  const [isLoading, setIsLoading] = useState<boolean>(false);
+  const [showHint, setShowHint] = useState<boolean>(false);
+  const [showSolution, setShowSolution] = useState<boolean>(false);
+  const [studentResponse, setStudentResponse] = useState<string>('');
+  const [isAnswerSubmitted, setIsAnswerSubmitted] = useState<boolean>(false);
+
+  const fetchAITask = async () => {
+    setIsLoading(true);
+    setShowHint(false);
+    setShowSolution(false);
+    setIsAnswerSubmitted(false);
+    setStudentResponse('');
+
+    try {
+      const res = await fetch('/api/generate-task', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ topic, difficulty })
+      });
+      const json = await res.json();
+      if (json.success && json.data) {
+        setTaskData(json.data);
+      }
+    } catch (err) {
+      console.error('Error fetching task:', err);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Initial load if null
+  React.useEffect(() => {
+    if (!taskData) {
+      fetchAITask();
+    }
+  }, []);
+
+  return (
+    <section id="section-tugas" className="space-y-8 animate-fadeIn">
+      {/* Title Header */}
+      <div className="bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 p-6 sm:p-8 rounded-3xl border border-slate-800 shadow-xl space-y-3">
+        <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-purple-500/20 text-purple-300 text-xs font-semibold">
+          <Sparkles className="w-4 h-4 text-purple-400" />
+          <span>Fitur Tugas Otomatis Berbasis AI</span>
+        </div>
+        <h1 className="text-3xl sm:text-4xl font-extrabold text-white tracking-tight">
+          Tugas & Latihan Soal Interaktif AI
+        </h1>
+        <p className="text-slate-300 text-sm sm:text-base leading-relaxed">
+          Tugas pada modul ini dihasilkan secara otomatis oleh Artificial Intelligence (AI) berdasarkan materi Bangun Ruang. Kamu dapat menghasilkan soal cerita baru secara tak terbatas!
+        </p>
+      </div>
+
+      {/* AI Task Generator Generator Controls */}
+      <div className="bg-slate-900 rounded-3xl border border-slate-800 p-6 sm:p-8 shadow-xl space-y-6">
+        <div className="flex items-center justify-between flex-wrap gap-4 border-b border-slate-800 pb-4">
+          <div className="flex items-center gap-3">
+            <div className="p-3 rounded-2xl bg-purple-500/10 border border-purple-500/20 text-purple-400">
+              <Sparkles className="w-6 h-6" />
+            </div>
+            <div>
+              <h2 className="text-xl font-bold text-white">Generator Tugas Otomatis AI</h2>
+              <p className="text-xs text-slate-400">Pilih topik dan tingkat kesulitan untuk membuat tugas baru</p>
+            </div>
+          </div>
+
+          <button
+            id="generate-ai-task-btn"
+            onClick={fetchAITask}
+            disabled={isLoading}
+            className="px-5 py-2.5 rounded-2xl bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white font-bold text-xs sm:text-sm shadow-lg shadow-purple-500/20 flex items-center gap-2 cursor-pointer transition-all disabled:opacity-50"
+          >
+            <RefreshCw className={`w-4 h-4 ${isLoading ? 'animate-spin' : ''}`} />
+            <span>{isLoading ? 'Membuat Tugas...' : 'Buat Tugas AI Baru'}</span>
+          </button>
+        </div>
+
+        {/* Filters */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div className="space-y-1">
+            <label className="text-xs font-bold text-slate-300 uppercase">Topik Bangun Ruang</label>
+            <select
+              value={topic}
+              onChange={(e) => setTopic(e.target.value as any)}
+              className="w-full bg-slate-800 border border-slate-700 rounded-xl px-4 py-2.5 text-xs sm:text-sm font-semibold text-white focus:outline-none focus:ring-2 focus:ring-purple-500"
+            >
+              <option value="Sisi Datar">Bangun Ruang Sisi Datar (Kubus, Balok, Prisma, Limas)</option>
+              <option value="Sisi Lengkung">Bangun Ruang Sisi Lengkung (Tabung, Kerucut, Bola)</option>
+              <option value="Kontekstual">Masalah Kontekstual Campuran (HOTS)</option>
+            </select>
+          </div>
+
+          <div className="space-y-1">
+            <label className="text-xs font-bold text-slate-300 uppercase">Tingkat Kesulitan</label>
+            <select
+              value={difficulty}
+              onChange={(e) => setDifficulty(e.target.value as any)}
+              className="w-full bg-slate-800 border border-slate-700 rounded-xl px-4 py-2.5 text-xs sm:text-sm font-semibold text-white focus:outline-none focus:ring-2 focus:ring-purple-500"
+            >
+              <option value="Mudah">Mudah (Pemahaman Konsep)</option>
+              <option value="Sedang">Sedang (Aplikasi Rumus)</option>
+              <option value="Tantangan/HOTS">Tantangan / HOTS (Analisis Kontekstual)</option>
+            </select>
+          </div>
+        </div>
+      </div>
+
+      {/* Task Content Card */}
+      {taskData && (
+        <div className="bg-slate-900 rounded-3xl border border-slate-800 p-6 sm:p-8 shadow-xl space-y-6">
+          <div className="flex items-center justify-between border-b border-slate-800 pb-4">
+            <div className="space-y-1">
+              <span className="text-xs font-extrabold px-3 py-1 rounded-full bg-purple-500/20 text-purple-300 border border-purple-500/30">
+                {topic} • {difficulty}
+              </span>
+              <h2 className="text-xl sm:text-2xl font-extrabold text-white mt-2">
+                {taskData.title}
+              </h2>
+            </div>
+            <FileText className="w-8 h-8 text-purple-400" />
+          </div>
+
+          {/* Problem Box */}
+          <div className="bg-slate-800/80 p-5 rounded-2xl border border-slate-700 space-y-3">
+            <strong className="text-purple-300 text-xs uppercase tracking-wider block">Deskripsi Soal Tugas:</strong>
+            <p className="text-sm sm:text-base text-slate-200 leading-relaxed">
+              {taskData.problem}
+            </p>
+          </div>
+
+          {/* Interactive Hint Toggle */}
+          <div className="space-y-3">
+            <button
+              id="toggle-ai-hint-btn"
+              onClick={() => setShowHint(!showHint)}
+              className="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-750 text-yellow-300 font-bold text-xs flex items-center gap-2 border border-slate-700 cursor-pointer"
+            >
+              <Lightbulb className="w-4 h-4 text-yellow-400" />
+              <span>{showHint ? 'Sembunyikan Petunjuk AI' : 'Buka Petunjuk (Hint) AI'}</span>
+            </button>
+
+            {showHint && (
+              <div className="p-4 rounded-xl bg-amber-950/40 border border-amber-800/60 text-amber-200 text-xs leading-relaxed animate-fadeIn">
+                <strong>💡 Petunjuk Pengerjaan AI:</strong> {taskData.hint}
+              </div>
+            )}
+          </div>
+
+          {/* Student Interactive Answer Box */}
+          <div className="space-y-3 bg-slate-950 p-5 rounded-2xl border border-slate-800">
+            <label className="text-xs font-bold text-slate-300 uppercase block">Lembar Jawaban Siswa</label>
+            <textarea
+              rows={4}
+              placeholder="Tuliskan langkah-langkah perhitungan dan jawaban akhirmu di sini..."
+              value={studentResponse}
+              onChange={(e) => setStudentResponse(e.target.value)}
+              className="w-full bg-slate-900 border border-slate-800 rounded-xl p-3 text-xs sm:text-sm text-white focus:outline-none focus:ring-2 focus:ring-purple-500"
+            />
+
+            <div className="flex items-center justify-between flex-wrap gap-3">
+              <button
+                id="submit-student-answer-btn"
+                onClick={() => setIsAnswerSubmitted(true)}
+                disabled={!studentResponse.trim()}
+                className="px-5 py-2.5 rounded-xl bg-purple-600 hover:bg-purple-500 disabled:opacity-40 text-white font-bold text-xs shadow flex items-center gap-2 cursor-pointer"
+              >
+                <Send className="w-4 h-4" />
+                <span>Kirim Jawaban Tugas</span>
+              </button>
+
+              <button
+                id="toggle-ai-solution-btn"
+                onClick={() => setShowSolution(!showSolution)}
+                className="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-indigo-300 font-bold text-xs flex items-center gap-2 border border-slate-700 cursor-pointer"
+              >
+                <CheckCircle2 className="w-4 h-4 text-indigo-400" />
+                <span>{showSolution ? 'Sembunyikan Pembahasan AI' : 'Lihat Kunci Pembahasan AI'}</span>
+              </button>
+            </div>
+
+            {isAnswerSubmitted && (
+              <div className="p-4 rounded-xl bg-emerald-950/60 border border-emerald-800 text-emerald-300 text-xs font-bold animate-fadeIn">
+                ✓ Jawaban tugasmu telah tersimpan! Kamu dapat mencocokkan langkahmu dengan Kunci Pembahasan AI di bawah.
+              </div>
+            )}
+          </div>
+
+          {/* AI Solution Box */}
+          {showSolution && (
+            <div className="bg-gradient-to-r from-slate-950 via-slate-900 to-slate-950 p-6 rounded-2xl border border-slate-800 space-y-4 animate-fadeIn">
+              <div className="flex items-center gap-2 text-indigo-400 font-bold text-sm">
+                <Sparkles className="w-4 h-4" />
+                <span>Kunci Pembahasan Langkah-demi-Langkah (AI Solution)</span>
+              </div>
+
+              <div className="whitespace-pre-line text-xs sm:text-sm text-slate-300 leading-relaxed font-mono bg-slate-900 p-4 rounded-xl border border-slate-800">
+                {taskData.solution}
+              </div>
+
+              <div className="p-3 rounded-xl bg-indigo-950/60 border border-indigo-800 text-indigo-300 text-xs sm:text-sm font-bold">
+                🎯 Jawaban Akhir: {taskData.answer}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Navigation Footer */}
+      <div className="flex items-center justify-between flex-wrap gap-4 pt-4">
+        <button
+          onClick={() => setActiveSection('kuis')}
+          className="px-5 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs sm:text-sm font-bold cursor-pointer"
+        >
+          ← Kembali ke Kuis
+        </button>
+
+        <button
+          onClick={() => setActiveSection('penutup')}
+          className="px-6 py-3 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 text-white font-bold text-xs sm:text-sm shadow-lg shadow-blue-500/20 flex items-center gap-2 cursor-pointer"
+        >
+          <span>Lanjut ke Penutup & Refleksi</span>
+          <ArrowRight className="w-4 h-4" />
+        </button>
+      </div>
+    </section>
+  );
+};
