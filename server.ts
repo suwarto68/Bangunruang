@@ -169,24 +169,25 @@ Format Wajib JSON murni (tanpa markdown tambahan):
 // Endpoint to fetch/pull student user data from Google Spreadsheet & Apps Script
 app.get('/api/students', async (req, res) => {
   const sheetId = (req.query.sheetId as string) || '1puAok0spjyAdD8u9JsLAWjBrvths2U-mf96jh1mb6Rw';
-  const appsScriptUrl = 'https://script.google.com/macros/s/AKfycbw6TwKowZd64xINueUgj8MnyQgTacEPZM5hIsBRV5SWKgF8esWAqpCQbogrkWO11gVh/exec';
+  const appsScriptUrl = 'https://script.google.com/macros/s/AKfycbz694-SeakzEIG3H3sY2mCQ7NP47yle10Mz27pMODtQoXrDTV8h93C6fI1EnWHBw73S/exec';
 
   let parsedStudents: any[] = [];
   let detectedSource = '';
 
-  // 1. Try Apps Script GET (in case teacher deployed doGet)
+  // 1. Try Apps Script GET (live web app doGet)
   try {
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 4000);
+    const timeoutId = setTimeout(() => controller.abort(), 8000);
     const scriptRes = await fetch(appsScriptUrl, { 
       headers: { 'Accept': 'application/json' },
+      redirect: 'follow',
       signal: controller.signal 
     });
     clearTimeout(timeoutId);
 
     if (scriptRes.ok) {
       const contentType = scriptRes.headers.get('content-type') || '';
-      if (contentType.includes('application/json')) {
+      if (contentType.includes('application/json') || contentType.includes('text/plain')) {
         const json: any = await scriptRes.json();
         if (json && json.result === 'success' && Array.isArray(json.students) && json.students.length > 0) {
           return res.json({
@@ -206,7 +207,7 @@ app.get('/api/students', async (req, res) => {
       }
     }
   } catch (err) {
-    // Apps Script doGet not yet implemented, proceed to GViz
+    console.warn('Apps Script GET request warning:', err);
   }
 
   // 2. Fetch directly from Google Spreadsheet via GViz API

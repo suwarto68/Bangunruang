@@ -63,7 +63,7 @@ export const Kuis: React.FC<KuisProps> = ({ setActiveSection }) => {
 
   const certCanvasRef = useRef<HTMLCanvasElement | null>(null);
 
-  const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbw6TwKowZd64xINueUgj8MnyQgTacEPZM5hIsBRV5SWKgF8esWAqpCQbogrkWO11gVh/exec';
+  const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbz694-SeakzEIG3H3sY2mCQ7NP47yle10Mz27pMODtQoXrDTV8h93C6fI1EnWHBw73S/exec';
   const SPREADSHEET_ID = '1puAok0spjyAdD8u9JsLAWjBrvths2U-mf96jh1mb6Rw';
 
   // Tarik Data Siswa / Pengguna dari Spreadsheet
