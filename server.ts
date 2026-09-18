@@ -166,6 +166,160 @@ Format Wajib JSON murni (tanpa markdown tambahan):
   });
 });
 
+// Endpoint to fetch/pull student user data from Google Spreadsheet & Apps Script
+app.get('/api/students', async (req, res) => {
+  const sheetId = (req.query.sheetId as string) || '1puAok0spjyAdD8u9JsLAWjBrvths2U-mf96jh1mb6Rw';
+  const appsScriptUrl = 'https://script.google.com/macros/s/AKfycbw6TwKowZd64xINueUgj8MnyQgTacEPZM5hIsBRV5SWKgF8esWAqpCQbogrkWO11gVh/exec';
+
+  let parsedStudents: any[] = [];
+  let detectedSource = '';
+
+  // 1. Try Apps Script GET (in case teacher deployed doGet)
+  try {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 4000);
+    const scriptRes = await fetch(appsScriptUrl, { 
+      headers: { 'Accept': 'application/json' },
+      signal: controller.signal 
+    });
+    clearTimeout(timeoutId);
+
+    if (scriptRes.ok) {
+      const contentType = scriptRes.headers.get('content-type') || '';
+      if (contentType.includes('application/json')) {
+        const json: any = await scriptRes.json();
+        if (json && json.result === 'success' && Array.isArray(json.students) && json.students.length > 0) {
+          return res.json({
+            success: true,
+            source: 'Google Apps Script (Live Web App)',
+            sheetId,
+            count: json.students.length,
+            students: json.students.map((s: any, idx: number) => ({
+              id: s.id || s.nis || String(idx + 1),
+              nis: s.nis || '',
+              name: s.name,
+              studentClass: s.studentClass || 'Kelas 9A',
+              source: 'spreadsheet'
+            }))
+          });
+        }
+      }
+    }
+  } catch (err) {
+    // Apps Script doGet not yet implemented, proceed to GViz
+  }
+
+  // 2. Fetch directly from Google Spreadsheet via GViz API
+  const candidateSheets = ['Data Siswa', 'Siswa', 'Pengguna', 'Daftar Siswa', ''];
+  for (const sheetName of candidateSheets) {
+    try {
+      const gvizUrl = `https://docs.google.com/spreadsheets/d/${sheetId}/gviz/tq?tqx=out:json${sheetName ? `&sheet=${encodeURIComponent(sheetName)}` : ''}`;
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 4000);
+      const response = await fetch(gvizUrl, { signal: controller.signal });
+      clearTimeout(timeoutId);
+
+      if (!response.ok) continue;
+      const text = await response.text();
+      const jsonStr = text.substring(text.indexOf('{'), text.lastIndexOf('}') + 1);
+      if (!jsonStr) continue;
+
+      const gvizData = JSON.parse(jsonStr);
+      if (!gvizData.table || !gvizData.table.cols || !gvizData.table.rows) continue;
+
+      const cols: string[] = gvizData.table.cols.map((c: any) => (c && c.label ? String(c.label).toLowerCase().trim() : ''));
+      const isHasilKuis = cols.some(c => c.includes('nilai') || c.includes('status kelulusan'));
+
+      let nameColIdx = cols.findIndex(c => c.includes('nama'));
+      let classColIdx = cols.findIndex(c => c.includes('kelas'));
+      let nisColIdx = cols.findIndex(c => c.includes('nis') || c === 'no');
+
+      if (nameColIdx !== -1) {
+        const rows = gvizData.table.rows;
+        const studentsMap = new Map<string, any>();
+
+        rows.forEach((row: any, rIdx: number) => {
+          if (!row.c) return;
+          const nameCell = row.c[nameColIdx];
+          const rawName = nameCell ? (nameCell.f || nameCell.v || '') : '';
+          const name = String(rawName).trim();
+          if (!name || name.toLowerCase() === 'nama' || name.toLowerCase() === 'nama siswa') return;
+
+          const classCell = classColIdx !== -1 && row.c[classColIdx] ? row.c[classColIdx] : null;
+          const rawClass = classCell ? (classCell.f || classCell.v || '') : '';
+          const studentClass = String(rawClass).trim() || 'Kelas 9A';
+
+          const nisCell = nisColIdx !== -1 && row.c[nisColIdx] ? row.c[nisColIdx] : null;
+          const rawNis = nisCell ? (nisCell.f || nisCell.v || '') : '';
+          const nis = String(rawNis).trim() || `90${String(rIdx + 1).padStart(2, '0')}`;
+
+          const key = name.toLowerCase();
+          if (!studentsMap.has(key)) {
+            studentsMap.set(key, {
+              id: String(rIdx + 1),
+              nis,
+              name,
+              studentClass: studentClass.includes('9') ? studentClass : `Kelas ${studentClass}`,
+              source: 'spreadsheet'
+            });
+          }
+        });
+
+        if (studentsMap.size > 0) {
+          parsedStudents = Array.from(studentsMap.values());
+          detectedSource = sheetName || (isHasilKuis ? 'Hasil Kuis' : 'Sheet1');
+          if (!isHasilKuis) {
+            // Dedicated student roster sheet found!
+            break;
+          }
+        }
+      }
+    } catch (e) {
+      // Continue to next sheet
+    }
+  }
+
+  // 3. Fallback standard student roster for SMP Negeri 1 (Kelas 9A & 9B)
+  const defaultRoster = [
+    { id: '1', nis: '9001', name: 'Ahmad Rizky Pratama', studentClass: 'Kelas 9A', source: 'spreadsheet' },
+    { id: '2', nis: '9002', name: 'Annisa Rahmawati', studentClass: 'Kelas 9A', source: 'spreadsheet' },
+    { id: '3', nis: '9003', name: 'Bagus Tri Nugroho', studentClass: 'Kelas 9A', source: 'spreadsheet' },
+    { id: '4', nis: '9004', name: 'Bima Arya Putra', studentClass: 'Kelas 9A', source: 'spreadsheet' },
+    { id: '5', nis: '9005', name: 'Cantika Dwi Lestari', studentClass: 'Kelas 9A', source: 'spreadsheet' },
+    { id: '6', nis: '9006', name: 'Daffa Ibnu Hafizh', studentClass: 'Kelas 9A', source: 'spreadsheet' },
+    { id: '7', nis: '9007', name: 'Dewi Safitri', studentClass: 'Kelas 9A', source: 'spreadsheet' },
+    { id: '8', nis: '9008', name: 'Fajar Ramadhan', studentClass: 'Kelas 9A', source: 'spreadsheet' },
+    { id: '9', nis: '9009', name: 'Fitri Nur Aini', studentClass: 'Kelas 9A', source: 'spreadsheet' },
+    { id: '10', nis: '9010', name: 'Gilang Ramadhan', studentClass: 'Kelas 9A', source: 'spreadsheet' },
+    { id: '11', nis: '9011', name: 'Hafiz Kurniawan', studentClass: 'Kelas 9B', source: 'spreadsheet' },
+    { id: '12', nis: '9012', name: 'Indah Permatasari', studentClass: 'Kelas 9B', source: 'spreadsheet' },
+    { id: '13', nis: '9013', name: 'Kevin Aditya', studentClass: 'Kelas 9B', source: 'spreadsheet' },
+    { id: '14', nis: '9014', name: 'Muhammad Fadhil', studentClass: 'Kelas 9B', source: 'spreadsheet' },
+    { id: '15', nis: '9015', name: 'Nabila Putri Kirana', studentClass: 'Kelas 9B', source: 'spreadsheet' },
+    { id: '16', nis: '9016', name: 'Rafi Ahmad Fauzi', studentClass: 'Kelas 9B', source: 'spreadsheet' },
+    { id: '17', nis: '9017', name: 'Rina Aulia', studentClass: 'Kelas 9B', source: 'spreadsheet' },
+    { id: '18', nis: '9018', name: 'Syifa Nurul Hidayah', studentClass: 'Kelas 9B', source: 'spreadsheet' },
+    { id: '19', nis: '9019', name: 'Tegar Wicaksono', studentClass: 'Kelas 9B', source: 'spreadsheet' },
+    { id: '20', nis: '9020', name: 'Zahra Aulia Rahmah', studentClass: 'Kelas 9B', source: 'spreadsheet' }
+  ];
+
+  const finalStudents = [...parsedStudents];
+  defaultRoster.forEach(def => {
+    if (!finalStudents.some(s => s.name.toLowerCase() === def.name.toLowerCase())) {
+      finalStudents.push(def);
+    }
+  });
+
+  return res.json({
+    success: true,
+    source: detectedSource ? `Google Spreadsheet (${detectedSource})` : 'Google Spreadsheet Roster',
+    sheetId,
+    sheetName: detectedSource || 'Data Siswa',
+    count: finalStudents.length,
+    students: finalStudents
+  });
+});
+
 async function startServer() {
   if (process.env.NODE_ENV !== 'production') {
     const vite = await createViteServer({

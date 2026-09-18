@@ -74,3 +74,11 @@ export interface CertificateData {
   teacherName: string;
   gradeText: string;
 }
+
+export interface StudentUser {
+  id: string;
+  nis?: string;
+  name: string;
+  studentClass: string;
+  source?: 'spreadsheet' | 'manual';
+}

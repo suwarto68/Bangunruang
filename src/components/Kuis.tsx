@@ -1,6 +1,6 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { QUIZ_QUESTIONS } from '../data/quizData';
-import { NavSection } from '../types';
+import { NavSection, StudentUser } from '../types';
 import { 
   CheckSquare, 
   Award, 
@@ -21,7 +21,12 @@ import {
   Unlock,
   KeyRound,
   X,
-  School
+  School,
+  RefreshCw,
+  Search,
+  Database,
+  Check,
+  Users
 } from 'lucide-react';
 
 interface KuisProps {
@@ -41,6 +46,15 @@ export const Kuis: React.FC<KuisProps> = ({ setActiveSection }) => {
   const [sendingSpreadsheet, setSendingSpreadsheet] = useState<boolean>(false);
   const [spreadsheetSentSuccess, setSpreadsheetSentSuccess] = useState<boolean>(false);
 
+  // Data Pengguna dari Spreadsheet
+  const [studentUsers, setStudentUsers] = useState<StudentUser[]>([]);
+  const [isLoadingStudents, setIsLoadingStudents] = useState<boolean>(false);
+  const [spreadsheetSourceInfo, setSpreadsheetSourceInfo] = useState<string>('Mengambil data pengguna dari spreadsheet...');
+  const [selectedStudentUser, setSelectedStudentUser] = useState<StudentUser | null>(null);
+  const [loginMode, setLoginMode] = useState<'spreadsheet' | 'manual'>('spreadsheet');
+  const [filterClass, setFilterClass] = useState<string>('Semua');
+  const [searchQuery, setSearchQuery] = useState<string>('');
+
   // Password state for unlocking solutions review
   const [isSolutionUnlocked, setIsSolutionUnlocked] = useState<boolean>(false);
   const [showPasswordModal, setShowPasswordModal] = useState<boolean>(false);
@@ -48,6 +62,81 @@ export const Kuis: React.FC<KuisProps> = ({ setActiveSection }) => {
   const [passwordError, setPasswordError] = useState<string>('');
 
   const certCanvasRef = useRef<HTMLCanvasElement | null>(null);
+
+  const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbw6TwKowZd64xINueUgj8MnyQgTacEPZM5hIsBRV5SWKgF8esWAqpCQbogrkWO11gVh/exec';
+  const SPREADSHEET_ID = '1puAok0spjyAdD8u9JsLAWjBrvths2U-mf96jh1mb6Rw';
+
+  // Tarik Data Siswa / Pengguna dari Spreadsheet
+  const fetchStudentsFromSpreadsheet = async () => {
+    setIsLoadingStudents(true);
+    try {
+      const res = await fetch('/api/students');
+      if (res.ok) {
+        const data = await res.json();
+        if (data && data.success && Array.isArray(data.students) && data.students.length > 0) {
+          setStudentUsers(data.students);
+          setSpreadsheetSourceInfo(`${data.source} • ${data.students.length} Siswa Terdaftar`);
+          return;
+        }
+      }
+      throw new Error('API server fetch returned invalid data');
+    } catch (err) {
+      console.warn('Gagal fetch /api/students, mencoba fallback direct GViz...', err);
+      try {
+        const gvizUrl = `https://docs.google.com/spreadsheets/d/${SPREADSHEET_ID}/gviz/tq?tqx=out:json`;
+        const gres = await fetch(gvizUrl);
+        const text = await gres.text();
+        const jsonStr = text.substring(text.indexOf('{'), text.lastIndexOf('}') + 1);
+        const gdata = JSON.parse(jsonStr);
+        if (gdata?.table?.rows) {
+          const names: StudentUser[] = [];
+          gdata.table.rows.forEach((r: any, idx: number) => {
+            const name = r.c?.[1]?.v || r.c?.[1]?.f;
+            const cls = r.c?.[2]?.v || r.c?.[2]?.f || 'Kelas 9A';
+            if (name && String(name).trim() !== '') {
+              names.push({
+                id: String(idx + 1),
+                nis: `90${String(idx + 1).padStart(2, '0')}`,
+                name: String(name).trim(),
+                studentClass: String(cls).trim(),
+                source: 'spreadsheet'
+              });
+            }
+          });
+          if (names.length > 0) {
+            setStudentUsers(names);
+            setSpreadsheetSourceInfo(`Google Spreadsheet GViz • ${names.length} Siswa`);
+            return;
+          }
+        }
+      } catch (e2) {
+        console.error('Fallback GViz juga gagal:', e2);
+      }
+      setSpreadsheetSourceInfo('Menggunakan database lokal siswa SMPN 1');
+    } finally {
+      setIsLoadingStudents(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchStudentsFromSpreadsheet();
+  }, []);
+
+  // Filtered Students List
+  const filteredStudents = useMemo(() => {
+    return studentUsers.filter((s) => {
+      const matchClass = filterClass === 'Semua' || s.studentClass === filterClass;
+      const q = searchQuery.toLowerCase().trim();
+      const matchQuery = !q || s.name.toLowerCase().includes(q) || (s.nis && s.nis.toLowerCase().includes(q));
+      return matchClass && matchQuery;
+    });
+  }, [studentUsers, filterClass, searchQuery]);
+
+  const handleSelectStudent = (student: StudentUser) => {
+    setSelectedStudentUser(student);
+    setStudentName(student.name);
+    setStudentClass(student.studentClass || 'Kelas 9A');
+  };
 
   // Timer Effect
   useEffect(() => {
@@ -91,8 +180,6 @@ export const Kuis: React.FC<KuisProps> = ({ setActiveSection }) => {
     });
     return Math.round((correctCount / QUIZ_QUESTIONS.length) * 100);
   };
-
-  const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbw6TwKowZd64xINueUgj8MnyQgTacEPZM5hIsBRV5SWKgF8esWAqpCQbogrkWO11gVh/exec';
 
   const handleSubmitQuiz = () => {
     setIsSubmitted(true);
@@ -227,17 +314,94 @@ export const Kuis: React.FC<KuisProps> = ({ setActiveSection }) => {
   };
 
   const googleAppsScriptCode = `/**
- * GOOGLE APPS SCRIPT UNTUK MONITORING KUIS BANGUN RUANG KELAS 9
+ * GOOGLE APPS SCRIPT LENGKAP: DATA PENGGUNA (SISWA) & REKAP NILAI KUIS
  * Spreadsheet ID: 1puAok0spjyAdD8u9JsLAWjBrvths2U-mf96jh1mb6Rw
- * Dibuat oleh: Suwarto, S.Pd
+ * Dibuat oleh: Suwarto, S.Pd (SMP Negeri 1)
  */
 
+// 1. FUNGSI GET: Tarik Data Pengguna / Siswa dari Spreadsheet ke Web Kuis
+function doGet(e) {
+  try {
+    var ss = SpreadsheetApp.openById("1puAok0spjyAdD8u9JsLAWjBrvths2U-mf96jh1mb6Rw");
+    var sheet = ss.getSheetByName("Data Siswa") || ss.getSheetByName("Siswa") || ss.getSheetByName("Pengguna");
+    
+    // Jika sheet Data Siswa belum ada, buat otomatis beserta contoh data
+    if (!sheet) {
+      sheet = ss.insertSheet("Data Siswa");
+      sheet.appendRow(["No", "NIS", "Nama Siswa", "Kelas"]);
+      sheet.getRange(1, 1, 1, 4).setFontWeight("bold").setBackground("#059669").setFontColor("#ffffff");
+      
+      var contohSiswa = [
+        [1, "9001", "Ahmad Rizky Pratama", "Kelas 9A"],
+        [2, "9002", "Annisa Rahmawati", "Kelas 9A"],
+        [3, "9003", "Bagus Tri Nugroho", "Kelas 9A"],
+        [4, "9004", "Bima Arya Putra", "Kelas 9A"],
+        [5, "9005", "Cantika Dwi Lestari", "Kelas 9A"],
+        [6, "9006", "Daffa Ibnu Hafizh", "Kelas 9A"],
+        [7, "9007", "Dewi Safitri", "Kelas 9A"],
+        [8, "9008", "Fajar Ramadhan", "Kelas 9A"],
+        [9, "9009", "Fitri Nur Aini", "Kelas 9A"],
+        [10, "9010", "Gilang Ramadhan", "Kelas 9A"],
+        [11, "9011", "Hafiz Kurniawan", "Kelas 9B"],
+        [12, "9012", "Indah Permatasari", "Kelas 9B"],
+        [13, "9013", "Kevin Aditya", "Kelas 9B"],
+        [14, "9014", "Muhammad Fadhil", "Kelas 9B"],
+        [15, "9015", "Nabila Putri Kirana", "Kelas 9B"],
+        [16, "9016", "Rafi Ahmad Fauzi", "Kelas 9B"],
+        [17, "9017", "Rina Aulia", "Kelas 9B"],
+        [18, "9018", "Syifa Nurul Hidayah", "Kelas 9B"],
+        [19, "9019", "Tegar Wicaksono", "Kelas 9B"],
+        [20, "9020", "Zahra Aulia Rahmah", "Kelas 9B"]
+      ];
+      for (var i = 0; i < contohSiswa.length; i++) {
+        sheet.appendRow(contohSiswa[i]);
+      }
+    }
+    
+    var values = sheet.getDataRange().getValues();
+    var headers = values[0];
+    var students = [];
+    
+    var nameIdx = -1, classIdx = -1, nisIdx = -1;
+    for (var c = 0; c < headers.length; c++) {
+      var h = String(headers[c]).toLowerCase().trim();
+      if (h.indexOf("nama") !== -1) nameIdx = c;
+      else if (h.indexOf("kelas") !== -1) classIdx = c;
+      else if (h.indexOf("nis") !== -1 || h.indexOf("no") !== -1) nisIdx = c;
+    }
+    if (nameIdx === -1) nameIdx = 2 < headers.length ? 2 : 1;
+    if (classIdx === -1) classIdx = 3 < headers.length ? 3 : 2;
+    if (nisIdx === -1) nisIdx = 1;
+    
+    for (var r = 1; r < values.length; r++) {
+      var row = values[r];
+      var nameVal = row[nameIdx];
+      if (nameVal && String(nameVal).trim() !== "") {
+        students.push({
+          id: String(r),
+          nis: nisIdx !== -1 && row[nisIdx] ? String(row[nisIdx]).trim() : "",
+          name: String(nameVal).trim(),
+          studentClass: classIdx !== -1 && row[classIdx] ? String(row[classIdx]).trim() : "Kelas 9A"
+        });
+      }
+    }
+    
+    return ContentService
+      .createTextOutput(JSON.stringify({ result: "success", count: students.length, students: students }))
+      .setMimeType(ContentService.MimeType.JSON);
+  } catch (err) {
+    return ContentService
+      .createTextOutput(JSON.stringify({ result: "error", error: err.toString() }))
+      .setMimeType(ContentService.MimeType.JSON);
+  }
+}
+
+// 2. FUNGSI POST: Kirim Hasil Kuis Siswa Otomatis ke Spreadsheet
 function doPost(e) {
   try {
     var ss = SpreadsheetApp.openById("1puAok0spjyAdD8u9JsLAWjBrvths2U-mf96jh1mb6Rw");
     var sheet = ss.getSheetByName("Hasil Kuis") || ss.insertSheet("Hasil Kuis");
     
-    // Jika sheet baru, buat header
     if (sheet.getLastRow() === 0) {
       sheet.appendRow(["Waktu Selesai", "Nama Siswa", "Kelas", "Nilai Kuis", "Status Kelulusan", "Mata Pelajaran"]);
       sheet.getRange(1, 1, 1, 6).setFontWeight("bold").setBackground("#3b82f6").setFontColor("#ffffff");
@@ -329,68 +493,305 @@ function doPost(e) {
         </p>
       </div>
 
-      {/* Screen 1: Name & Class Input Form before starting */}
+      {/* Screen 1: Name & Class Input Form with Spreadsheet Sync */}
       {!isQuizStarted && (
-        <div className="max-w-xl mx-auto bg-slate-900 rounded-3xl border border-slate-800 p-8 shadow-2xl space-y-6 text-center">
-          <div className="w-16 h-16 rounded-2xl bg-gradient-to-tr from-blue-600 to-indigo-600 text-white flex items-center justify-center mx-auto shadow-lg shadow-blue-500/30">
-            <User className="w-8 h-8" />
-          </div>
-
-          <div className="space-y-2">
-            <h2 className="text-2xl font-extrabold text-white">Masukkan Identitas Siswa</h2>
-            <p className="text-slate-400 text-xs sm:text-sm">
-              Nama lengkap dan kelas kamu akan tercetak di Sertifikat Kelulusan dan rekap nilai Google Spreadsheet.
-            </p>
-          </div>
-
-          <form onSubmit={handleStartQuiz} className="space-y-5 text-left">
-            <div className="space-y-1">
-              <label className="text-xs font-bold text-slate-300 uppercase tracking-wider">Nama Lengkap Siswa *</label>
-              <input
-                type="text"
-                required
-                placeholder="Contoh: Ahmad Rizky Saputra"
-                value={studentName}
-                onChange={(e) => setStudentName(e.target.value)}
-                className="w-full bg-slate-800 border border-slate-700 rounded-2xl px-4 py-3 text-sm font-semibold text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
-              />
-            </div>
-
-            {/* Class Selection: 9A or 9B */}
-            <div className="space-y-2">
-              <label className="text-xs font-bold text-slate-300 uppercase tracking-wider block">
-                Pilihan Kelas *
-              </label>
-              <div className="grid grid-cols-2 gap-3">
-                {['Kelas 9A', 'Kelas 9B'].map((cls) => (
-                  <button
-                    key={cls}
-                    type="button"
-                    onClick={() => setStudentClass(cls)}
-                    className={`p-3.5 rounded-2xl border font-bold text-sm flex items-center justify-center gap-2 cursor-pointer transition-all ${
-                      studentClass === cls
-                        ? 'bg-blue-600 text-white border-blue-400 shadow-lg shadow-blue-500/20'
-                        : 'bg-slate-800 text-slate-300 border-slate-700 hover:bg-slate-750'
-                    }`}
-                  >
-                    <School className="w-4 h-4" />
-                    <span>{cls}</span>
-                  </button>
-                ))}
+        <div className="max-w-2xl mx-auto bg-slate-900 rounded-3xl border border-slate-800 p-6 sm:p-8 shadow-2xl space-y-6">
+          {/* Top Spreadsheet Sync Status Bar */}
+          <div className="bg-slate-950/80 border border-slate-800/80 rounded-2xl p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+            <div className="flex items-center gap-3">
+              <div className="relative flex items-center justify-center">
+                <div className="w-3 h-3 rounded-full bg-emerald-500 animate-ping absolute"></div>
+                <div className="w-3 h-3 rounded-full bg-emerald-500 relative"></div>
+              </div>
+              <div className="text-left">
+                <div className="flex items-center gap-2">
+                  <Database className="w-4 h-4 text-emerald-400" />
+                  <span className="text-xs font-bold text-white">Google Spreadsheet Terhubung</span>
+                </div>
+                <p className="text-[11px] text-slate-400 font-mono mt-0.5">
+                  {spreadsheetSourceInfo}
+                </p>
               </div>
             </div>
 
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={fetchStudentsFromSpreadsheet}
+                disabled={isLoadingStudents}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-xs font-bold text-slate-200 border border-slate-700 cursor-pointer transition-all disabled:opacity-50"
+                title="Tarik data terbaru dari Google Spreadsheet"
+              >
+                <RefreshCw className={`w-3.5 h-3.5 text-blue-400 ${isLoadingStudents ? 'animate-spin' : ''}`} />
+                <span>{isLoadingStudents ? 'Menarik...' : 'Tarik Data'}</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setShowAppsScriptModal(true)}
+                className="p-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 text-xs font-bold cursor-pointer"
+                title="Petunjuk Integrasi Spreadsheet"
+              >
+                <Code2 className="w-4 h-4 text-emerald-400" />
+              </button>
+            </div>
+          </div>
+
+          <div className="text-center space-y-2 pt-1">
+            <div className="w-14 h-14 rounded-2xl bg-gradient-to-tr from-blue-600 to-indigo-600 text-white flex items-center justify-center mx-auto shadow-lg shadow-blue-500/30">
+              <Users className="w-7 h-7" />
+            </div>
+            <h2 className="text-2xl font-extrabold text-white">Login Peserta Kuis</h2>
+            <p className="text-slate-400 text-xs sm:text-sm max-w-md mx-auto">
+              Pilih namamu langsung dari daftar pengguna Google Spreadsheet atau masukkan secara mandiri.
+            </p>
+          </div>
+
+          {/* Mode Tabs: Dari Spreadsheet vs Input Manual */}
+          <div className="grid grid-cols-2 gap-2 bg-slate-950 p-1.5 rounded-2xl border border-slate-800">
+            <button
+              type="button"
+              onClick={() => setLoginMode('spreadsheet')}
+              className={`py-2.5 text-xs sm:text-sm font-bold rounded-xl transition-all cursor-pointer flex items-center justify-center gap-2 ${
+                loginMode === 'spreadsheet'
+                  ? 'bg-blue-600 text-white shadow-lg shadow-blue-600/30'
+                  : 'text-slate-400 hover:text-white'
+              }`}
+            >
+              <FileSpreadsheet className="w-4 h-4 text-emerald-400" />
+              <span>Daftar Siswa Spreadsheet</span>
+              {studentUsers.length > 0 && (
+                <span className="text-[10px] px-2 py-0.5 rounded-full bg-blue-900/60 border border-blue-400/30 text-blue-200 font-mono">
+                  {studentUsers.length}
+                </span>
+              )}
+            </button>
+
+            <button
+              type="button"
+              onClick={() => {
+                setLoginMode('manual');
+                setSelectedStudentUser(null);
+              }}
+              className={`py-2.5 text-xs sm:text-sm font-bold rounded-xl transition-all cursor-pointer flex items-center justify-center gap-2 ${
+                loginMode === 'manual'
+                  ? 'bg-blue-600 text-white shadow-lg shadow-blue-600/30'
+                  : 'text-slate-400 hover:text-white'
+              }`}
+            >
+              <User className="w-4 h-4 text-blue-300" />
+              <span>Input Nama Manual</span>
+            </button>
+          </div>
+
+          {/* TAB 1: SPREADSHEET USER SELECTION */}
+          {loginMode === 'spreadsheet' && (
+            <div className="space-y-4">
+              {/* Filter Class and Search Bar */}
+              <div className="flex flex-col sm:flex-row gap-2.5">
+                {/* Filter Kelas */}
+                <div className="flex gap-1.5 bg-slate-950 p-1 rounded-xl border border-slate-800 shrink-0">
+                  {['Semua', 'Kelas 9A', 'Kelas 9B'].map((cls) => (
+                    <button
+                      key={cls}
+                      type="button"
+                      onClick={() => setFilterClass(cls)}
+                      className={`px-3 py-1.5 rounded-lg text-xs font-bold cursor-pointer transition-all ${
+                        filterClass === cls
+                          ? 'bg-indigo-600 text-white shadow'
+                          : 'text-slate-400 hover:text-white'
+                      }`}
+                    >
+                      {cls}
+                    </button>
+                  ))}
+                </div>
+
+                {/* Search Field */}
+                <div className="relative flex-1">
+                  <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+                  <input
+                    type="text"
+                    placeholder="Cari nama siswa atau NIS..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="w-full bg-slate-950 border border-slate-800 rounded-xl pl-9 pr-9 py-2 text-xs sm:text-sm text-white focus:outline-none focus:ring-2 focus:ring-blue-500 placeholder-slate-500"
+                  />
+                  {searchQuery && (
+                    <button
+                      type="button"
+                      onClick={() => setSearchQuery('')}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white text-xs"
+                    >
+                      ✕
+                    </button>
+                  )}
+                </div>
+              </div>
+
+              {/* Student Cards List */}
+              <div className="space-y-1.5 text-left">
+                <div className="flex items-center justify-between text-[11px] text-slate-400 px-1 font-semibold">
+                  <span>Pilih Nama ({filteredStudents.length} siswa ditemukan):</span>
+                  <span>Klik untuk memilih</span>
+                </div>
+
+                <div className="max-h-56 overflow-y-auto space-y-1.5 pr-1">
+                  {filteredStudents.length === 0 ? (
+                    <div className="text-center py-6 bg-slate-950/60 rounded-2xl border border-dashed border-slate-800 p-4 space-y-2">
+                      <p className="text-xs text-slate-400">
+                        Nama "{searchQuery}" tidak ditemukan pada daftar spreadsheet.
+                      </p>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setStudentName(searchQuery);
+                          setLoginMode('manual');
+                        }}
+                        className="px-3 py-1.5 bg-blue-600/30 hover:bg-blue-600/50 text-blue-300 border border-blue-500/40 rounded-xl text-xs font-bold transition-colors cursor-pointer"
+                      >
+                        Gunakan "{searchQuery}" lewat Input Manual
+                      </button>
+                    </div>
+                  ) : (
+                    filteredStudents.map((s) => {
+                      const isSelected = selectedStudentUser?.id === s.id || studentName.toLowerCase() === s.name.toLowerCase();
+                      return (
+                        <div
+                          key={s.id + s.name}
+                          onClick={() => handleSelectStudent(s)}
+                          className={`p-3 rounded-2xl border transition-all cursor-pointer flex items-center justify-between gap-3 ${
+                            isSelected
+                              ? 'bg-blue-600/20 border-blue-500 text-white shadow-md shadow-blue-500/10'
+                              : 'bg-slate-950/60 hover:bg-slate-800/80 border-slate-800 text-slate-300'
+                          }`}
+                        >
+                          <div className="flex items-center gap-3 min-w-0">
+                            <div className={`w-8 h-8 rounded-xl flex items-center justify-center shrink-0 font-bold text-xs ${
+                              isSelected ? 'bg-blue-600 text-white' : 'bg-slate-800 text-slate-400'
+                            }`}>
+                              {isSelected ? <Check className="w-4 h-4" /> : <User className="w-4 h-4" />}
+                            </div>
+                            <div className="min-w-0">
+                              <p className="text-xs sm:text-sm font-bold text-white truncate">
+                                {s.name}
+                              </p>
+                              <div className="flex items-center gap-2 text-[10px] text-slate-400">
+                                {s.nis && <span className="font-mono text-slate-400">NIS: {s.nis}</span>}
+                                <span>•</span>
+                                <span className={s.studentClass === 'Kelas 9A' ? 'text-blue-400 font-semibold' : 'text-indigo-400 font-semibold'}>
+                                  {s.studentClass}
+                                </span>
+                              </div>
+                            </div>
+                          </div>
+
+                          <span className={`text-[11px] font-bold px-2.5 py-1 rounded-lg border shrink-0 transition-colors ${
+                            isSelected
+                              ? 'bg-emerald-500/20 border-emerald-500/40 text-emerald-300'
+                              : 'bg-slate-800 border-slate-700 text-slate-400'
+                          }`}>
+                            {isSelected ? 'Terpilih ✓' : 'Pilih'}
+                          </span>
+                        </div>
+                      );
+                    })
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* TAB 2: MANUAL INPUT */}
+          {loginMode === 'manual' && (
+            <div className="space-y-4">
+              <div className="space-y-1 text-left">
+                <label className="text-xs font-bold text-slate-300 uppercase tracking-wider">Nama Lengkap Siswa *</label>
+                <input
+                  type="text"
+                  required
+                  placeholder="Contoh: Ahmad Rizky Saputra"
+                  value={studentName}
+                  onChange={(e) => setStudentName(e.target.value)}
+                  className="w-full bg-slate-950 border border-slate-800 rounded-2xl px-4 py-3 text-sm font-semibold text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+
+              {/* Class Selection: 9A or 9B */}
+              <div className="space-y-2 text-left">
+                <label className="text-xs font-bold text-slate-300 uppercase tracking-wider block">
+                  Pilihan Kelas *
+                </label>
+                <div className="grid grid-cols-2 gap-3">
+                  {['Kelas 9A', 'Kelas 9B'].map((cls) => (
+                    <button
+                      key={cls}
+                      type="button"
+                      onClick={() => setStudentClass(cls)}
+                      className={`p-3 rounded-2xl border font-bold text-sm flex items-center justify-center gap-2 cursor-pointer transition-all ${
+                        studentClass === cls
+                          ? 'bg-blue-600 text-white border-blue-400 shadow-lg shadow-blue-500/20'
+                          : 'bg-slate-950 text-slate-300 border-slate-800 hover:bg-slate-800'
+                      }`}
+                    >
+                      <School className="w-4 h-4" />
+                      <span>{cls}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Active Selected Identity Summary Card */}
+          {studentName.trim() && (
+            <div className="p-4 rounded-2xl bg-gradient-to-r from-blue-950/40 via-indigo-950/40 to-slate-900 border border-blue-800/40 flex items-center justify-between gap-4 animate-fadeIn">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-blue-600 text-white flex items-center justify-center shrink-0 shadow-md">
+                  <CheckCircle2 className="w-6 h-6" />
+                </div>
+                <div className="text-left">
+                  <p className="text-[11px] text-blue-300 font-bold uppercase tracking-wider">Identitas Siap Ujian</p>
+                  <p className="text-sm sm:text-base font-extrabold text-white">{studentName}</p>
+                  <p className="text-xs text-slate-300">
+                    {studentClass} • {selectedStudentUser ? 'Terverifikasi Spreadsheet' : 'Peserta Mandiri'}
+                  </p>
+                </div>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => {
+                  setStudentName('');
+                  setSelectedStudentUser(null);
+                }}
+                className="text-slate-400 hover:text-rose-400 text-xs font-semibold px-2 py-1 rounded-lg border border-slate-800 hover:border-rose-900 cursor-pointer"
+              >
+                Ganti
+              </button>
+            </div>
+          )}
+
+          {/* Action Button: Start Quiz */}
+          <form onSubmit={handleStartQuiz}>
             <button
               type="submit"
-              className="w-full py-4 rounded-2xl bg-gradient-to-r from-blue-600 to-indigo-600 text-white font-extrabold text-base shadow-xl shadow-blue-600/30 hover:scale-[1.02] active:scale-[0.98] transition-all cursor-pointer flex items-center justify-center gap-2 mt-4"
+              disabled={!studentName.trim()}
+              className="w-full py-4 rounded-2xl bg-gradient-to-r from-blue-600 to-indigo-600 disabled:from-slate-800 disabled:to-slate-800 disabled:text-slate-500 text-white font-extrabold text-base shadow-xl shadow-blue-600/30 hover:scale-[1.01] active:scale-[0.99] transition-all cursor-pointer disabled:cursor-not-allowed flex items-center justify-center gap-2"
             >
               <span>Mulai Kerjakan Kuis (25 Soal)</span>
               <ArrowRight className="w-5 h-5" />
             </button>
           </form>
 
-          <div className="text-xs text-slate-400 bg-slate-950 p-4 rounded-xl border border-slate-800">
-            <strong>Aturan Kuis:</strong> Waktu pengerjaan 25 menit • 25 Soal Pilihan Ganda Lengkap • Nilai Maksimal 100 • Pembahasan Soal Terkunci Password.
+          <div className="text-xs text-slate-400 bg-slate-950 p-4 rounded-xl border border-slate-800 flex items-center justify-between flex-wrap gap-2 text-left">
+            <span><strong>Ketentuan:</strong> Waktu 25 menit • 25 Soal Lengkap • Nilai Minimal Kelulusan 70.</span>
+            <button
+              type="button"
+              onClick={() => setShowAppsScriptModal(true)}
+              className="text-emerald-400 hover:underline font-semibold cursor-pointer"
+            >
+              Format Spreadsheet & Apps Script →
+            </button>
           </div>
         </div>
       )}
@@ -837,12 +1238,40 @@ function doPost(e) {
               </pre>
             </div>
 
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+              <div className="bg-slate-950 p-3.5 rounded-xl border border-slate-800 space-y-1.5">
+                <div className="flex items-center gap-2 text-emerald-400 font-bold">
+                  <Database className="w-4 h-4" />
+                  <span>Sheet 1: "Data Siswa" (Login Siswa)</span>
+                </div>
+                <p className="text-slate-400 text-[11px] leading-relaxed">
+                  Format Kolom: <strong className="text-white">No | NIS | Nama Siswa | Kelas</strong>
+                </p>
+                <p className="text-[11px] text-slate-500">
+                  Data dari sheet ini otomatis ditarik ke menu Login Kuis (termasuk filter Kelas 9A & 9B).
+                </p>
+              </div>
+
+              <div className="bg-slate-950 p-3.5 rounded-xl border border-slate-800 space-y-1.5">
+                <div className="flex items-center gap-2 text-blue-400 font-bold">
+                  <FileSpreadsheet className="w-4 h-4" />
+                  <span>Sheet 2: "Hasil Kuis" (Rekap Nilai)</span>
+                </div>
+                <p className="text-slate-400 text-[11px] leading-relaxed">
+                  Format Kolom: <strong className="text-white">Waktu Selesai | Nama Siswa | Kelas | Nilai Kuis | Status Kelulusan | Mata Pelajaran</strong>
+                </p>
+                <p className="text-[11px] text-slate-500">
+                  Tersimpan otomatis setiap siswa menyelesaikan 25 butir soal kuis.
+                </p>
+              </div>
+            </div>
+
             <div className="space-y-2 text-xs text-slate-400 bg-slate-800/60 p-4 rounded-xl border border-slate-700">
-              <strong className="text-white block">Cara Memasang Script di Google Spreadsheet:</strong>
+              <strong className="text-white block">Cara Memasang / Memperbarui Script di Google Spreadsheet:</strong>
               <ol className="list-decimal list-inside space-y-1">
                 <li>Buka Google Spreadsheet dengan ID di atas.</li>
                 <li>Klik menu <strong>Ekstensi → Apps Script</strong>.</li>
-                <li>Hapus kode bawaan, lalu paste kode di atas.</li>
+                <li>Hapus kode bawaan, lalu paste kode lengkap di atas (sudah mencakup fungsi <code>doGet</code> untuk tarik pengguna & <code>doPost</code> untuk simpan nilai).</li>
                 <li>Klik <strong>Terapkan (Deploy) → Penerapan Baru (New Deployment)</strong>.</li>
                 <li>Pilih jenis <strong>Aplikasi Web (Web App)</strong>, atur akses ke <em>"Siapa saja" (Anyone)</em>.</li>
               </ol>
