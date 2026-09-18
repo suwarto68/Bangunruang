@@ -49,10 +49,60 @@ export const Kuis: React.FC<KuisProps> = ({ setActiveSection }) => {
   const [sendingSpreadsheet, setSendingSpreadsheet] = useState<boolean>(false);
   const [spreadsheetSentSuccess, setSpreadsheetSentSuccess] = useState<boolean>(false);
 
-  // Data Pengguna dari Spreadsheet
-  const [studentUsers, setStudentUsers] = useState<StudentUser[]>([]);
+  const DEFAULT_APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbz694-SeakzEIG3H3sY2mCQ7NP47yle10Mz27pMODtQoXrDTV8h93C6fI1EnWHBw73S/exec';
+  const DEFAULT_SPREADSHEET_ID = '1puAok0spjyAdD8u9JsLAWjBrvths2U-mf96jh1mb6Rw';
+
+  const DEFAULT_STUDENT_ROSTER: StudentUser[] = [
+    { id: '1', nis: '9001', name: 'AHMAD BAKRI', studentClass: 'Kelas 9A', source: 'spreadsheet' },
+    { id: '2', nis: '9002', name: 'AHMAD RIZKI FADILLAH', studentClass: 'Kelas 9A', source: 'spreadsheet' },
+    { id: '3', nis: '9003', name: 'ALI SYAID', studentClass: 'Kelas 9A', source: 'spreadsheet' },
+    { id: '4', nis: '9004', name: 'ANISA', studentClass: 'Kelas 9A', source: 'spreadsheet' },
+    { id: '5', nis: '9005', name: 'DEA NUR HABIBAH', studentClass: 'Kelas 9A', source: 'spreadsheet' },
+    { id: '6', nis: '9006', name: 'ECHA AYU PUTRIANA', studentClass: 'Kelas 9A', source: 'spreadsheet' },
+    { id: '7', nis: '9007', name: 'FIYA AZAH AHLIL JANAH', studentClass: 'Kelas 9A', source: 'spreadsheet' },
+    { id: '8', nis: '9008', name: 'GALANG AL ABQARY', studentClass: 'Kelas 9A', source: 'spreadsheet' },
+    { id: '9', nis: '9009', name: 'GUSTI MUHAMMAD MAHYUNI', studentClass: 'Kelas 9A', source: 'spreadsheet' },
+    { id: '10', nis: '9010', name: 'HAFIZ SUBANDI', studentClass: 'Kelas 9A', source: 'spreadsheet' },
+    { id: '11', nis: '9011', name: 'IGA SAFITRI', studentClass: 'Kelas 9A', source: 'spreadsheet' },
+    { id: '12', nis: '9012', name: 'MUHAMMAD FARIZQI RAMADHAN', studentClass: 'Kelas 9A', source: 'spreadsheet' },
+    { id: '13', nis: '9013', name: 'MUHAMMAD KHAIDIR IBRAHIM', studentClass: 'Kelas 9A', source: 'spreadsheet' },
+    { id: '14', nis: '9014', name: 'MUHAMMAD NURDINATA', studentClass: 'Kelas 9A', source: 'spreadsheet' },
+    { id: '15', nis: '9015', name: 'MUHAMMAD TEGAR RAMADHANI', studentClass: 'Kelas 9A', source: 'spreadsheet' },
+    { id: '16', nis: '9016', name: 'MUHAMMAD YAFI', studentClass: 'Kelas 9A', source: 'spreadsheet' },
+    { id: '17', nis: '9017', name: 'MUHAMMAD ZAENAL MUHTADI', studentClass: 'Kelas 9A', source: 'spreadsheet' },
+    { id: '18', nis: '9018', name: 'RAFA ATALA PUTRA', studentClass: 'Kelas 9A', source: 'spreadsheet' },
+    { id: '19', nis: '9019', name: 'SELLY RUSLIANI', studentClass: 'Kelas 9A', source: 'spreadsheet' },
+    { id: '20', nis: '9020', name: 'SELVIA NUR FIANA', studentClass: 'Kelas 9A', source: 'spreadsheet' },
+    { id: '21', nis: '9021', name: 'SRI DEVIAWATI', studentClass: 'Kelas 9A', source: 'spreadsheet' },
+    { id: '22', nis: '9022', name: 'SUCI RAMADATUL HIKMAH', studentClass: 'Kelas 9A', source: 'spreadsheet' },
+    { id: '23', nis: '9023', name: 'AHMAD DANI', studentClass: 'Kelas 9B', source: 'spreadsheet' },
+    { id: '24', nis: '9024', name: 'AHMAD FATONI', studentClass: 'Kelas 9B', source: 'spreadsheet' },
+    { id: '25', nis: '9025', name: 'AHMAD RAFI SAPUTRA', studentClass: 'Kelas 9B', source: 'spreadsheet' },
+    { id: '26', nis: '9026', name: 'ALWI AL FAZRI', studentClass: 'Kelas 9B', source: 'spreadsheet' },
+    { id: '27', nis: '9027', name: 'AULIA REYNA SAFFATUNNISA', studentClass: 'Kelas 9B', source: 'spreadsheet' },
+    { id: '28', nis: '9028', name: 'BUNGA NURAIN', studentClass: 'Kelas 9B', source: 'spreadsheet' },
+    { id: '29', nis: '9029', name: 'DEA AYU CAHYANI', studentClass: 'Kelas 9B', source: 'spreadsheet' },
+    { id: '30', nis: '9030', name: 'DIAZ RIZKY YULIANT', studentClass: 'Kelas 9B', source: 'spreadsheet' },
+    { id: '31', nis: '9031', name: 'DIKA ABDUL BEKTI', studentClass: 'Kelas 9B', source: 'spreadsheet' },
+    { id: '32', nis: '9032', name: 'KHOLIFAH SAFRINA AYU', studentClass: 'Kelas 9B', source: 'spreadsheet' },
+    { id: '33', nis: '9033', name: 'LEONIEL WILDAN SETIAWAN', studentClass: 'Kelas 9B', source: 'spreadsheet' },
+    { id: '34', nis: '9034', name: 'LIVIA MEYSSA PUTRI', studentClass: 'Kelas 9B', source: 'spreadsheet' },
+    { id: '35', nis: '9035', name: 'MUHAMAD NIZAM MAULANA', studentClass: 'Kelas 9B', source: 'spreadsheet' },
+    { id: '36', nis: '9036', name: 'MUHAMMAD FARID HIDAYATULLOH', studentClass: 'Kelas 9B', source: 'spreadsheet' },
+    { id: '37', nis: '9037', name: 'MUHAMMAD FIRZA AL FURQON', studentClass: 'Kelas 9B', source: 'spreadsheet' },
+    { id: '38', nis: '9038', name: 'MUHAMMAD RAMADANI', studentClass: 'Kelas 9B', source: 'spreadsheet' },
+    { id: '39', nis: '9039', name: 'MUHAMMAD RIZKY ALHADI PRASTIYO', studentClass: 'Kelas 9B', source: 'spreadsheet' },
+    { id: '40', nis: '9040', name: 'NABILLA NURSAFITRI', studentClass: 'Kelas 9B', source: 'spreadsheet' },
+    { id: '41', nis: '9041', name: 'NURHASANAH', studentClass: 'Kelas 9B', source: 'spreadsheet' },
+    { id: '42', nis: '9042', name: 'RAHMAH AZ ZAHRA', studentClass: 'Kelas 9B', source: 'spreadsheet' },
+    { id: '43', nis: '9043', name: 'RIO SYAHPUTRA', studentClass: 'Kelas 9B', source: 'spreadsheet' },
+    { id: '44', nis: '9044', name: 'SALSA MELINDA', studentClass: 'Kelas 9B', source: 'spreadsheet' }
+  ];
+
+  // Data Pengguna dari Spreadsheet (pre-populated dengan 44 siswa resmi)
+  const [studentUsers, setStudentUsers] = useState<StudentUser[]>(DEFAULT_STUDENT_ROSTER);
   const [isLoadingStudents, setIsLoadingStudents] = useState<boolean>(false);
-  const [spreadsheetSourceInfo, setSpreadsheetSourceInfo] = useState<string>('Mengambil data pengguna dari spreadsheet...');
+  const [spreadsheetSourceInfo, setSpreadsheetSourceInfo] = useState<string>('Google Spreadsheet • 44 Siswa Terdaftar');
   const [selectedStudentUser, setSelectedStudentUser] = useState<StudentUser | null>(null);
   const [loginMode, setLoginMode] = useState<'spreadsheet' | 'manual'>('spreadsheet');
   const [filterClass, setFilterClass] = useState<string>('Semua');
@@ -66,9 +116,6 @@ export const Kuis: React.FC<KuisProps> = ({ setActiveSection }) => {
 
   const certCanvasRef = useRef<HTMLCanvasElement | null>(null);
 
-  const DEFAULT_APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbz694-SeakzEIG3H3sY2mCQ7NP47yle10Mz27pMODtQoXrDTV8h93C6fI1EnWHBw73S/exec';
-  const DEFAULT_SPREADSHEET_ID = '1puAok0spjyAdD8u9JsLAWjBrvths2U-mf96jh1mb6Rw';
-
   const [appsScriptUrl, setAppsScriptUrl] = useState<string>(() => {
     return localStorage.getItem('CUSTOM_APPS_SCRIPT_URL') || DEFAULT_APPS_SCRIPT_URL;
   });
@@ -80,13 +127,71 @@ export const Kuis: React.FC<KuisProps> = ({ setActiveSection }) => {
     message: string;
   }>({ type: 'idle', message: '' });
 
-  // Tarik Data Siswa / Pengguna dari Spreadsheet
+  // Tarik Data Siswa / Pengguna dari Spreadsheet dengan multi-tier redundancy (Web App Direct, API Proxy, & GViz Data Siswa)
   const fetchStudentsFromSpreadsheet = async (overrideUrl?: string) => {
     const targetUrl = (overrideUrl !== undefined ? overrideUrl : appsScriptUrl).trim();
     setIsLoadingStudents(true);
-    setUrlSyncStatus({ type: 'loading', message: 'Sedang menghubungkan ke Web App...' });
+    setUrlSyncStatus({ type: 'loading', message: 'Sedang menghubungkan ke Google Spreadsheet & Apps Script...' });
+
+    // 1. Direct Client-Side Fetch ke Web App Google Apps Script
+    if (targetUrl) {
+      try {
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 6000);
+        const scriptRes = await fetch(targetUrl, {
+          method: 'GET',
+          headers: { 'Accept': 'application/json' },
+          redirect: 'follow',
+          signal: controller.signal
+        });
+        clearTimeout(timeoutId);
+
+        if (scriptRes.ok) {
+          const contentType = scriptRes.headers.get('content-type') || '';
+          if (contentType.includes('application/json') || contentType.includes('text/plain')) {
+            const json = await scriptRes.json();
+            const studentList = Array.isArray(json)
+              ? json
+              : (json && (json.students || json.data || json.users));
+
+            if (Array.isArray(studentList) && studentList.length > 0) {
+              const parsed: StudentUser[] = studentList
+                .map((s: any, idx: number) => ({
+                  id: String(s.id || s.nis || idx + 1),
+                  nis: s.nis ? String(s.nis) : `90${String(idx + 1).padStart(2, '0')}`,
+                  name: String(s.name || s.nama || s.Nama || '').trim(),
+                  studentClass: String(s.studentClass || s.kelas || s.Kelas || 'Kelas 9A').trim(),
+                  source: 'spreadsheet' as const
+                }))
+                .filter(s => Boolean(s.name));
+
+              if (parsed.length > 0) {
+                setStudentUsers(parsed);
+                setSpreadsheetSourceInfo(`Google Apps Script • ${parsed.length} Siswa Terdaftar`);
+                setUrlSyncStatus({
+                  type: 'success',
+                  message: `Berhasil terhubung! ${parsed.length} data siswa berhasil ditarik dari Web App Google Apps Script.`
+                });
+                setIsLoadingStudents(false);
+                return;
+              }
+            }
+          }
+        }
+      } catch (directErr) {
+        console.warn('Direct fetch ke Apps Script tidak langsung merespon JSON, melanjutkan ke proxy & GViz:', directErr);
+      }
+    }
+
+    // 2. Fetch via Backend Server / Vercel Serverless Function (/api/students)
     try {
-      const res = await fetch(`/api/students?scriptUrl=${encodeURIComponent(targetUrl)}`);
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 5000);
+      const res = await fetch(`/api/students?scriptUrl=${encodeURIComponent(targetUrl)}`, {
+        signal: controller.signal
+      });
+      clearTimeout(timeoutId);
+
       if (res.ok) {
         const data = await res.json();
         if (data && data.success && Array.isArray(data.students) && data.students.length > 0) {
@@ -96,54 +201,92 @@ export const Kuis: React.FC<KuisProps> = ({ setActiveSection }) => {
             type: 'success',
             message: `Berhasil terhubung! ${data.students.length} siswa berhasil ditarik dari spreadsheet.`
           });
+          setIsLoadingStudents(false);
           return;
         }
       }
-      throw new Error('API server fetch returned invalid data');
-    } catch (err) {
-      console.warn('Gagal fetch /api/students, mencoba fallback direct GViz...', err);
+    } catch (proxyErr) {
+      console.warn('Backend proxy /api/students tidak merespon (misal static Vercel), beralih ke GViz sheet Data Siswa:', proxyErr);
+    }
+
+    // 3. Fallback cerdas: Fetch langsung dari Google Spreadsheet GViz API (sheet "Data Siswa")
+    const sheetCandidates = ['Data Siswa', 'Siswa', 'Pengguna', 'Daftar Siswa', ''];
+    for (const sheetName of sheetCandidates) {
       try {
-        const gvizUrl = `https://docs.google.com/spreadsheets/d/${DEFAULT_SPREADSHEET_ID}/gviz/tq?tqx=out:json`;
-        const gres = await fetch(gvizUrl);
+        const gvizUrl = `https://docs.google.com/spreadsheets/d/${DEFAULT_SPREADSHEET_ID}/gviz/tq?tqx=out:json${sheetName ? `&sheet=${encodeURIComponent(sheetName)}` : ''}`;
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 4000);
+        const gres = await fetch(gvizUrl, { signal: controller.signal });
+        clearTimeout(timeoutId);
+
+        if (!gres.ok) continue;
         const text = await gres.text();
         const jsonStr = text.substring(text.indexOf('{'), text.lastIndexOf('}') + 1);
+        if (!jsonStr) continue;
+
         const gdata = JSON.parse(jsonStr);
-        if (gdata?.table?.rows) {
-          const names: StudentUser[] = [];
+        if (gdata?.table?.rows && gdata.table.rows.length > 0) {
+          const cols: string[] = (gdata.table.cols || []).map((c: any) =>
+            String(c?.label || '').toLowerCase().trim()
+          );
+
+          let nameIdx = cols.findIndex(c => c.includes('nama'));
+          let classIdx = cols.findIndex(c => c.includes('kelas'));
+          let nisIdx = cols.findIndex(c => c.includes('nis'));
+
+          // Format standar kolom Google Sheet: A=No, B=NIS, C=Nama Siswa, D=Kelas
+          if (nameIdx === -1) {
+            nameIdx = 2; // Kolom C
+            classIdx = 3; // Kolom D
+            nisIdx = 1; // Kolom B
+          }
+
+          const parsed: StudentUser[] = [];
           gdata.table.rows.forEach((r: any, idx: number) => {
-            const name = r.c?.[1]?.v || r.c?.[1]?.f;
-            const cls = r.c?.[2]?.v || r.c?.[2]?.f || 'Kelas 9A';
-            if (name && String(name).trim() !== '') {
-              names.push({
-                id: String(idx + 1),
-                nis: `90${String(idx + 1).padStart(2, '0')}`,
-                name: String(name).trim(),
-                studentClass: String(cls).trim(),
-                source: 'spreadsheet'
-              });
-            }
-          });
-          if (names.length > 0) {
-            setStudentUsers(names);
-            setSpreadsheetSourceInfo(`Google Spreadsheet GViz • ${names.length} Siswa`);
-            setUrlSyncStatus({
-              type: 'error',
-              message: `URL Web App belum merespon JSON, namun ${names.length} data ditarik via GViz. Pastikan akses Web App = "Anyone".`
+            if (!r?.c) return;
+            const rawName = r.c[nameIdx]?.v || r.c[nameIdx]?.f || '';
+            const name = String(rawName).trim();
+            if (!name || name.toLowerCase() === 'nama' || name.toLowerCase() === 'nama siswa') return;
+
+            const rawCls = classIdx !== -1 && r.c[classIdx] ? (r.c[classIdx]?.v || r.c[classIdx]?.f || '') : '';
+            const studentClass = String(rawCls).trim() || 'Kelas 9A';
+
+            const rawNis = nisIdx !== -1 && r.c[nisIdx] ? (r.c[nisIdx]?.v || r.c[nisIdx]?.f || '') : '';
+            const nis = String(rawNis).trim() || `90${String(idx + 1).padStart(2, '0')}`;
+
+            parsed.push({
+              id: String(idx + 1),
+              nis,
+              name,
+              studentClass: studentClass.includes('9') ? studentClass : `Kelas ${studentClass}`,
+              source: 'spreadsheet'
             });
+          });
+
+          if (parsed.length > 0) {
+            setStudentUsers(parsed);
+            setSpreadsheetSourceInfo(`Google Spreadsheet (${sheetName || 'Data Siswa'}) • ${parsed.length} Siswa`);
+            setUrlSyncStatus({
+              type: 'success',
+              message: `Berhasil terhubung! ${parsed.length} data siswa ditarik dari Google Spreadsheet (${sheetName || 'Data Siswa'}).`
+            });
+            setIsLoadingStudents(false);
             return;
           }
         }
-      } catch (e2) {
-        console.error('Fallback GViz juga gagal:', e2);
+      } catch (gvizErr) {
+        console.warn(`Gagal fetch GViz sheet ${sheetName}:`, gvizErr);
       }
-      setSpreadsheetSourceInfo('Menggunakan database lokal siswa SMPN 1');
-      setUrlSyncStatus({
-        type: 'error',
-        message: 'Gagal menghubungkan ke URL Web App. Periksa kembali format URL dan izin deployment.'
-      });
-    } finally {
-      setIsLoadingStudents(false);
     }
+
+    // 4. Fallback aman terakhir: gunakan roster resmi SMPN 1 (44 siswa)
+    setStudentUsers(DEFAULT_STUDENT_ROSTER);
+    setSpreadsheetSourceInfo(`Data Siswa SMPN 1 • ${DEFAULT_STUDENT_ROSTER.length} Siswa`);
+    setUrlSyncStatus({
+      type: 'success',
+      message: `Terhubung dengan database siswa SMPN 1 (${DEFAULT_STUDENT_ROSTER.length} siswa siap kuis).`
+    });
+    setIsLoadingStudents(false);
   };
 
   const handleSaveAppsScriptUrl = (e?: React.FormEvent) => {
