@@ -169,7 +169,8 @@ Format Wajib JSON murni (tanpa markdown tambahan):
 // Endpoint to fetch/pull student user data from Google Spreadsheet & Apps Script
 app.get('/api/students', async (req, res) => {
   const sheetId = (req.query.sheetId as string) || '1puAok0spjyAdD8u9JsLAWjBrvths2U-mf96jh1mb6Rw';
-  const appsScriptUrl = 'https://script.google.com/macros/s/AKfycbz694-SeakzEIG3H3sY2mCQ7NP47yle10Mz27pMODtQoXrDTV8h93C6fI1EnWHBw73S/exec';
+  const customScriptUrl = (req.query.scriptUrl as string) || '';
+  const appsScriptUrl = customScriptUrl.trim() || 'https://script.google.com/macros/s/AKfycbz694-SeakzEIG3H3sY2mCQ7NP47yle10Mz27pMODtQoXrDTV8h93C6fI1EnWHBw73S/exec';
 
   let parsedStudents: any[] = [];
   let detectedSource = '';
@@ -177,7 +178,7 @@ app.get('/api/students', async (req, res) => {
   // 1. Try Apps Script GET (live web app doGet)
   try {
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 8000);
+    const timeoutId = setTimeout(() => controller.abort(), 9000);
     const scriptRes = await fetch(appsScriptUrl, { 
       headers: { 'Accept': 'application/json' },
       redirect: 'follow',
@@ -189,17 +190,21 @@ app.get('/api/students', async (req, res) => {
       const contentType = scriptRes.headers.get('content-type') || '';
       if (contentType.includes('application/json') || contentType.includes('text/plain')) {
         const json: any = await scriptRes.json();
-        if (json && json.result === 'success' && Array.isArray(json.students) && json.students.length > 0) {
+        const studentList = Array.isArray(json) 
+          ? json 
+          : (json && (json.students || json.data || json.users));
+        if (Array.isArray(studentList) && studentList.length > 0) {
           return res.json({
             success: true,
             source: 'Google Apps Script (Live Web App)',
             sheetId,
-            count: json.students.length,
-            students: json.students.map((s: any, idx: number) => ({
+            scriptUrl: appsScriptUrl,
+            count: studentList.length,
+            students: studentList.map((s: any, idx: number) => ({
               id: s.id || s.nis || String(idx + 1),
               nis: s.nis || '',
-              name: s.name,
-              studentClass: s.studentClass || 'Kelas 9A',
+              name: s.name || s.nama || s.Nama || '',
+              studentClass: s.studentClass || s.kelas || s.Kelas || 'Kelas 9A',
               source: 'spreadsheet'
             }))
           });

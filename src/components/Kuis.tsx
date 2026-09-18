@@ -26,7 +26,10 @@ import {
   Search,
   Database,
   Check,
-  Users
+  Users,
+  Edit3,
+  ExternalLink,
+  AlertCircle
 } from 'lucide-react';
 
 interface KuisProps {
@@ -63,19 +66,36 @@ export const Kuis: React.FC<KuisProps> = ({ setActiveSection }) => {
 
   const certCanvasRef = useRef<HTMLCanvasElement | null>(null);
 
-  const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbz694-SeakzEIG3H3sY2mCQ7NP47yle10Mz27pMODtQoXrDTV8h93C6fI1EnWHBw73S/exec';
-  const SPREADSHEET_ID = '1puAok0spjyAdD8u9JsLAWjBrvths2U-mf96jh1mb6Rw';
+  const DEFAULT_APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbz694-SeakzEIG3H3sY2mCQ7NP47yle10Mz27pMODtQoXrDTV8h93C6fI1EnWHBw73S/exec';
+  const DEFAULT_SPREADSHEET_ID = '1puAok0spjyAdD8u9JsLAWjBrvths2U-mf96jh1mb6Rw';
+
+  const [appsScriptUrl, setAppsScriptUrl] = useState<string>(() => {
+    return localStorage.getItem('CUSTOM_APPS_SCRIPT_URL') || DEFAULT_APPS_SCRIPT_URL;
+  });
+  const [tempScriptUrl, setTempScriptUrl] = useState<string>(() => {
+    return localStorage.getItem('CUSTOM_APPS_SCRIPT_URL') || DEFAULT_APPS_SCRIPT_URL;
+  });
+  const [urlSyncStatus, setUrlSyncStatus] = useState<{
+    type: 'idle' | 'loading' | 'success' | 'error';
+    message: string;
+  }>({ type: 'idle', message: '' });
 
   // Tarik Data Siswa / Pengguna dari Spreadsheet
-  const fetchStudentsFromSpreadsheet = async () => {
+  const fetchStudentsFromSpreadsheet = async (overrideUrl?: string) => {
+    const targetUrl = (overrideUrl !== undefined ? overrideUrl : appsScriptUrl).trim();
     setIsLoadingStudents(true);
+    setUrlSyncStatus({ type: 'loading', message: 'Sedang menghubungkan ke Web App...' });
     try {
-      const res = await fetch('/api/students');
+      const res = await fetch(`/api/students?scriptUrl=${encodeURIComponent(targetUrl)}`);
       if (res.ok) {
         const data = await res.json();
         if (data && data.success && Array.isArray(data.students) && data.students.length > 0) {
           setStudentUsers(data.students);
           setSpreadsheetSourceInfo(`${data.source} • ${data.students.length} Siswa Terdaftar`);
+          setUrlSyncStatus({
+            type: 'success',
+            message: `Berhasil terhubung! ${data.students.length} siswa berhasil ditarik dari spreadsheet.`
+          });
           return;
         }
       }
@@ -83,7 +103,7 @@ export const Kuis: React.FC<KuisProps> = ({ setActiveSection }) => {
     } catch (err) {
       console.warn('Gagal fetch /api/students, mencoba fallback direct GViz...', err);
       try {
-        const gvizUrl = `https://docs.google.com/spreadsheets/d/${SPREADSHEET_ID}/gviz/tq?tqx=out:json`;
+        const gvizUrl = `https://docs.google.com/spreadsheets/d/${DEFAULT_SPREADSHEET_ID}/gviz/tq?tqx=out:json`;
         const gres = await fetch(gvizUrl);
         const text = await gres.text();
         const jsonStr = text.substring(text.indexOf('{'), text.lastIndexOf('}') + 1);
@@ -106,6 +126,10 @@ export const Kuis: React.FC<KuisProps> = ({ setActiveSection }) => {
           if (names.length > 0) {
             setStudentUsers(names);
             setSpreadsheetSourceInfo(`Google Spreadsheet GViz • ${names.length} Siswa`);
+            setUrlSyncStatus({
+              type: 'error',
+              message: `URL Web App belum merespon JSON, namun ${names.length} data ditarik via GViz. Pastikan akses Web App = "Anyone".`
+            });
             return;
           }
         }
@@ -113,9 +137,29 @@ export const Kuis: React.FC<KuisProps> = ({ setActiveSection }) => {
         console.error('Fallback GViz juga gagal:', e2);
       }
       setSpreadsheetSourceInfo('Menggunakan database lokal siswa SMPN 1');
+      setUrlSyncStatus({
+        type: 'error',
+        message: 'Gagal menghubungkan ke URL Web App. Periksa kembali format URL dan izin deployment.'
+      });
     } finally {
       setIsLoadingStudents(false);
     }
+  };
+
+  const handleSaveAppsScriptUrl = (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    const trimmed = tempScriptUrl.trim();
+    if (!trimmed) return;
+    setAppsScriptUrl(trimmed);
+    localStorage.setItem('CUSTOM_APPS_SCRIPT_URL', trimmed);
+    fetchStudentsFromSpreadsheet(trimmed);
+  };
+
+  const handleResetAppsScriptUrl = () => {
+    setTempScriptUrl(DEFAULT_APPS_SCRIPT_URL);
+    setAppsScriptUrl(DEFAULT_APPS_SCRIPT_URL);
+    localStorage.removeItem('CUSTOM_APPS_SCRIPT_URL');
+    fetchStudentsFromSpreadsheet(DEFAULT_APPS_SCRIPT_URL);
   };
 
   useEffect(() => {
@@ -447,7 +491,7 @@ function doPost(e) {
         timestamp: new Date().toISOString()
       };
 
-      await fetch(APPS_SCRIPT_URL, {
+      await fetch(appsScriptUrl, {
         method: 'POST',
         headers: { 'Content-Type': 'text/plain;charset=utf-8' },
         body: JSON.stringify(payload),
@@ -514,10 +558,10 @@ function doPost(e) {
               </div>
             </div>
 
-            <div className="flex items-center gap-2">
+            <div className="flex items-center flex-wrap gap-2">
               <button
                 type="button"
-                onClick={fetchStudentsFromSpreadsheet}
+                onClick={() => fetchStudentsFromSpreadsheet()}
                 disabled={isLoadingStudents}
                 className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-xs font-bold text-slate-200 border border-slate-700 cursor-pointer transition-all disabled:opacity-50"
                 title="Tarik data terbaru dari Google Spreadsheet"
@@ -527,11 +571,15 @@ function doPost(e) {
               </button>
               <button
                 type="button"
-                onClick={() => setShowAppsScriptModal(true)}
-                className="p-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 text-xs font-bold cursor-pointer"
-                title="Petunjuk Integrasi Spreadsheet"
+                onClick={() => {
+                  setTempScriptUrl(appsScriptUrl);
+                  setShowAppsScriptModal(true);
+                }}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-indigo-600/30 hover:bg-indigo-600/50 text-indigo-300 border border-indigo-500/30 text-xs font-bold cursor-pointer transition-all"
+                title="Edit URL Web App Google Apps Script"
               >
-                <Code2 className="w-4 h-4 text-emerald-400" />
+                <Edit3 className="w-3.5 h-3.5 text-indigo-400" />
+                <span>Edit URL Web App</span>
               </button>
             </div>
           </div>
@@ -1205,18 +1253,109 @@ function doPost(e) {
               </button>
             </div>
 
-            <div className="space-y-2 text-xs text-slate-300">
-              <p>
-                Kode & URL Google Apps Script ini dikonfigurasi khusus untuk mengirimkan rekap hasil nilai siswa secara otomatis ke Google Spreadsheet ID:
-              </p>
-              <div className="p-2.5 rounded-xl bg-slate-950 font-mono text-emerald-300 font-bold border border-slate-800 break-all">
-                1puAok0spjyAdD8u9JsLAWjBrvths2U-mf96jh1mb6Rw
+            {/* Editable Web App URL Section */}
+            <div className="bg-slate-950 p-4 sm:p-5 rounded-2xl border border-indigo-500/40 space-y-3.5 shadow-inner">
+              <div className="flex items-center justify-between flex-wrap gap-2">
+                <div className="flex items-center gap-2">
+                  <Edit3 className="w-4 h-4 text-indigo-400" />
+                  <span className="text-xs font-bold text-white uppercase tracking-wide">
+                    Pengaturan URL Web App Google Apps Script
+                  </span>
+                </div>
+                <span className="text-[10px] px-2 py-0.5 rounded-full bg-indigo-500/20 text-indigo-300 font-semibold">
+                  Bisa Diedit
+                </span>
               </div>
-              <p className="pt-1">
-                <strong>URL Web App Terpasang:</strong>
+
+              <p className="text-xs text-slate-300 leading-relaxed">
+                Ubah atau tempelkan URL Web App dari deployment Apps Script Anda (berakhir dengan <code className="text-indigo-300 font-mono">/exec</code>) untuk menarik daftar siswa dan menyimpan nilai:
               </p>
-              <div className="p-2.5 rounded-xl bg-slate-950 font-mono text-blue-300 font-semibold border border-slate-800 break-all text-[11px]">
-                {APPS_SCRIPT_URL}
+
+              <form onSubmit={handleSaveAppsScriptUrl} className="space-y-3">
+                <div className="space-y-1.5">
+                  <label className="text-[11px] font-semibold text-slate-300 block">
+                    URL Web App Aktif:
+                  </label>
+                  <div className="relative flex items-center">
+                    <input
+                      type="url"
+                      value={tempScriptUrl}
+                      onChange={(e) => {
+                        setTempScriptUrl(e.target.value);
+                        if (urlSyncStatus.type !== 'idle') {
+                          setUrlSyncStatus({ type: 'idle', message: '' });
+                        }
+                      }}
+                      placeholder="https://script.google.com/macros/s/.../exec"
+                      required
+                      className="w-full bg-slate-900 border border-slate-700 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 rounded-xl px-3.5 py-2.5 text-xs text-indigo-200 font-mono focus:outline-none pr-10"
+                    />
+                    {tempScriptUrl && (
+                      <a
+                        href={tempScriptUrl}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="absolute right-3 text-slate-400 hover:text-white"
+                        title="Buka URL Web App di Tab Baru"
+                      >
+                        <ExternalLink className="w-4 h-4" />
+                      </a>
+                    )}
+                  </div>
+                </div>
+
+                {/* Status Feedback Banner */}
+                {urlSyncStatus.type !== 'idle' && (
+                  <div
+                    className={`p-3 rounded-xl text-xs flex items-start gap-2.5 border ${
+                      urlSyncStatus.type === 'loading'
+                        ? 'bg-blue-950/60 border-blue-800 text-blue-300'
+                        : urlSyncStatus.type === 'success'
+                        ? 'bg-emerald-950/60 border-emerald-800 text-emerald-300'
+                        : 'bg-rose-950/60 border-rose-800 text-rose-300'
+                    }`}
+                  >
+                    {urlSyncStatus.type === 'loading' && (
+                      <RefreshCw className="w-4 h-4 animate-spin shrink-0 text-blue-400 mt-0.5" />
+                    )}
+                    {urlSyncStatus.type === 'success' && (
+                      <Check className="w-4 h-4 shrink-0 text-emerald-400 mt-0.5" />
+                    )}
+                    {urlSyncStatus.type === 'error' && (
+                      <AlertCircle className="w-4 h-4 shrink-0 text-rose-400 mt-0.5" />
+                    )}
+                    <span className="leading-relaxed">{urlSyncStatus.message}</span>
+                  </div>
+                )}
+
+                <div className="flex flex-wrap items-center gap-2 pt-1">
+                  <button
+                    type="submit"
+                    disabled={isLoadingStudents || !tempScriptUrl.trim()}
+                    className="flex items-center gap-2 px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold transition-all shadow-md shadow-indigo-600/30 cursor-pointer disabled:opacity-50"
+                  >
+                    <RefreshCw className={`w-3.5 h-3.5 ${isLoadingStudents ? 'animate-spin' : ''}`} />
+                    <span>{isLoadingStudents ? 'Menarik...' : 'Simpan & Tarik Data Pengguna'}</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={handleResetAppsScriptUrl}
+                    disabled={isLoadingStudents}
+                    className="px-3 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white text-xs font-semibold border border-slate-700 transition-all cursor-pointer"
+                  >
+                    Reset ke URL Asli
+                  </button>
+                </div>
+              </form>
+            </div>
+
+            <div className="space-y-1.5 text-xs text-slate-300">
+              <p>
+                Target Google Spreadsheet ID:
+              </p>
+              <div className="p-2.5 rounded-xl bg-slate-950 font-mono text-emerald-300 font-bold border border-slate-800 break-all text-[11px]">
+                {DEFAULT_SPREADSHEET_ID}
               </div>
             </div>
 
